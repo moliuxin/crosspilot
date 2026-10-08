@@ -168,33 +168,52 @@ export default function GlobeIntro() {
         ctx.fill()
       }
 
-      // 地球辉光
-      const glow = ctx.createRadialGradient(cx, cy, R * 0.55, cx, cy, R * 1.5)
-      glow.addColorStop(0, 'rgba(37,99,235,0.20)')
-      glow.addColorStop(1, 'rgba(37,99,235,0)')
-      ctx.fillStyle = glow
+      // 地球辉光（青 + 品红双色）
+      const glowC = ctx.createRadialGradient(cx - R * 0.25, cy - R * 0.2, R * 0.55, cx, cy, R * 1.5)
+      glowC.addColorStop(0, 'rgba(34,211,238,0.16)')
+      glowC.addColorStop(1, 'rgba(34,211,238,0)')
+      ctx.fillStyle = glowC
       ctx.beginPath()
       ctx.arc(cx, cy, R * 1.5, 0, 6.283)
       ctx.fill()
+      const glowM = ctx.createRadialGradient(cx + R * 0.35, cy + R * 0.25, R * 0.4, cx, cy, R * 1.35)
+      glowM.addColorStop(0, 'rgba(232,121,249,0.12)')
+      glowM.addColorStop(1, 'rgba(232,121,249,0)')
+      ctx.fillStyle = glowM
+      ctx.beginPath()
+      ctx.arc(cx, cy, R * 1.35, 0, 6.283)
+      ctx.fill()
 
       // 球体底盘
-      ctx.fillStyle = 'rgba(8,17,38,0.92)'
+      ctx.fillStyle = 'rgba(6,12,28,0.94)'
       ctx.beginPath()
       ctx.arc(cx, cy, R, 0, 6.283)
       ctx.fill()
+      // 霓虹描边（青主品红辅，随呼吸微动）
+      ctx.lineWidth = 1.4
+      ctx.strokeStyle = `rgba(34,211,238,${0.5 + 0.18 * Math.sin(t * 1.6)})`
+      ctx.beginPath()
+      ctx.arc(cx, cy, R + 1, 0, 6.283)
+      ctx.stroke()
+      ctx.strokeStyle = 'rgba(232,121,249,0.28)'
+      ctx.beginPath()
+      ctx.arc(cx, cy, R + 6, 0, 6.283)
+      ctx.stroke()
 
-      // 经纬线框（只画正面，亮度随深度）
+      // 经纬线框（只画正面，亮度随深度）—— 霓虹青
       for (const p of wire) {
         const q = rot(p)
         if (q.z <= 0) continue
-        const a = 0.10 + q.z * 0.45
-        ctx.fillStyle = `rgba(96,150,235,${a})`
-        const size = 0.7 + q.z * 1.1
+        const a = 0.12 + q.z * 0.55
+        ctx.fillStyle = `rgba(34,211,238,${a})`
+        const size = 0.7 + q.z * 1.2
         ctx.fillRect(cx + q.x * R - size / 2, cy - q.y * R - size / 2, size, size)
       }
 
-      // 出海弧线 + 动画光点
-      for (const arc of arcs) {
+      // 出海弧线 + 动画光点（青/品红交替）
+      for (let ai = 0; ai < arcs.length; ai++) {
+        const arc = arcs[ai]
+        const neon = ai % 2 === 0 ? '56,189,248' : '232,121,249'
         let prev = null
         ctx.lineWidth = 1.2
         for (let i = 0; i < arc.pts.length; i++) {
@@ -202,7 +221,7 @@ export default function GlobeIntro() {
           const sx = cx + q.x * R, sy = cy - q.y * R
           if (prev && q.z > -0.05 && prev.z > -0.05) {
             const zz = Math.max(0, (q.z + prev.z) / 2)
-            ctx.strokeStyle = `rgba(56,189,248,${0.10 + zz * 0.5})`
+            ctx.strokeStyle = `rgba(${neon},${0.10 + zz * 0.55})`
             ctx.beginPath()
             ctx.moveTo(prev.sx, prev.sy)
             ctx.lineTo(sx, sy)
@@ -216,47 +235,47 @@ export default function GlobeIntro() {
         const hq = rot(arc.pts[idx])
         if (hq.z > 0) {
           const hx = cx + hq.x * R, hy = cy - hq.y * R
-          ctx.fillStyle = 'rgba(125,211,252,0.95)'
+          ctx.fillStyle = `rgba(${neon},0.95)`
           ctx.beginPath()
           ctx.arc(hx, hy, 2.2, 0, 6.283)
           ctx.fill()
-          ctx.fillStyle = 'rgba(125,211,252,0.25)'
+          ctx.fillStyle = `rgba(${neon},0.22)`
           ctx.beginPath()
           ctx.arc(hx, hy, 5.5, 0, 6.283)
           ctx.fill()
         }
       }
 
-      // 出发地：中国制造带
+      // 出发地：中国制造带（霓虹黄核心 + 品红脉冲环）
       const hq = rot(hubV)
       if (hq.z > 0) {
         const hx = cx + hq.x * R, hy = cy - hq.y * R
-        ctx.fillStyle = 'rgba(250,204,21,0.95)'
+        ctx.fillStyle = 'rgba(253,224,71,0.95)'
         ctx.beginPath()
         ctx.arc(hx, hy, 3.4, 0, 6.283)
         ctx.fill()
-        ctx.strokeStyle = 'rgba(250,204,21,0.5)'
+        ctx.strokeStyle = 'rgba(232,121,249,0.55)'
         ctx.beginPath()
         ctx.arc(hx, hy, 7 + Math.sin(t * 2.4) * 2, 0, 6.283)
         ctx.stroke()
       }
 
-      // 目标市场脉冲点 + 标签
-      ctx.font = '11px system-ui, "Microsoft YaHei", sans-serif'
+      // 目标市场脉冲点 + 标签（品红点 · 青标签）
+      ctx.font = '11px ui-monospace, "Cascadia Mono", Consolas, "Microsoft YaHei", monospace'
       for (const m of MARKETS) {
         const q = rot(ll2v(m.lat, m.lon))
         if (q.z <= 0.05) continue
         const mx = cx + q.x * R, my = cy - q.y * R
         const a = 0.35 + q.z * 0.65
-        ctx.fillStyle = `rgba(56,189,248,${a})`
+        ctx.fillStyle = `rgba(232,121,249,${a})`
         ctx.beginPath()
         ctx.arc(mx, my, 2.6, 0, 6.283)
         ctx.fill()
-        ctx.strokeStyle = `rgba(56,189,248,${a * 0.45})`
+        ctx.strokeStyle = `rgba(34,211,238,${a * 0.5})`
         ctx.beginPath()
         ctx.arc(mx, my, 5 + Math.sin(t * 2 + m.lon) * 1.6, 0, 6.283)
         ctx.stroke()
-        ctx.fillStyle = `rgba(191,219,254,${a})`
+        ctx.fillStyle = `rgba(165,243,252,${a})`
         ctx.fillText(m.name, mx + 9, my + 3.5)
       }
     }
@@ -274,6 +293,8 @@ export default function GlobeIntro() {
   return (
     <div className="globe-page" ref={wrapRef}>
       <canvas ref={canvasRef} aria-label="可拖动旋转的 3D 地球" />
+      <div className="gp-grid-floor" aria-hidden="true" />
+      <div className="gp-scanlines" aria-hidden="true" />
       <div className="globe-overlay">
         <div className="globe-brand">
           <span className="mark">C</span>
@@ -282,9 +303,14 @@ export default function GlobeIntro() {
             <span>AI 出海建站与获客平台 · 中 / 英 / 俄</span>
           </div>
         </div>
+        <div className="gp-hud" aria-hidden="true">
+          <span className="gp-chip"><i className="gp-blink" />SYS.ONLINE</span>
+          <span className="gp-chip">HUB <b>23.0N · 113.1E</b></span>
+          <span className="gp-chip">MARKETS <b>06</b></span>
+        </div>
         <div className="globe-copy">
-          <div className="globe-eyebrow">GLOBAL · AI SITE BUILDER</div>
-          <h1>让世界找到你</h1>
+          <div className="globe-eyebrow">// GLOBAL · AI SITE BUILDER</div>
+          <h1 data-text="让世界找到你">让世界找到你</h1>
           <p>
             从中国制造带到全球市场：AI 生成中 / 英 / 俄独立站，
             SEO &amp; GEO 让你在搜索引擎与 AI 回答里被找到、被信任、被询价。
@@ -297,9 +323,9 @@ export default function GlobeIntro() {
               登录 / 注册
             </button>
           </div>
-          <div className="globe-hint">🖱 按住地球拖动旋转 · 松手自动巡航</div>
+          <div className="globe-hint">DRAG TO ROTATE · 按住地球拖动旋转 · 松手自动巡航</div>
         </div>
-        <div className="globe-foot">© {new Date().getFullYear()} CrossPilot · SITEPILOT</div>
+        <div className="globe-foot">© {new Date().getFullYear()} CROSSPILOT · SITEPILOT // NEON EDITION</div>
       </div>
     </div>
   )
