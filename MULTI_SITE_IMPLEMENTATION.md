@@ -1,9 +1,9 @@
-# MULTI_SITE_IMPLEMENTATION.md — P0-MULTI-SITE + P0-NAV-TEMPLATE-PUBLIC 验收报告
+# MULTI_SITE_IMPLEMENTATION.md — P0-MULTI-SITE + P0-NAV-TEMPLATE-PUBLIC + AI 生成三阶段验收报告
 
 > 日期：2026-10-08
 > 执行：ZCode（按 AGENTS.md 工程规则）
-> 范围：多站点底层架构 → 导航去重 + 登录 Dashboard → 公共模板商城
-> 未开始（按指令顺序刻意推迟）：AI 图片 / GLM-Image / Market Profile / Jev
+> 范围：多站点底层架构 → 导航去重 + 登录 Dashboard → 公共模板商城 → **AI 整站生成 / 三语 Market Profile / 免费额度与 AI 画笔付费**
+> 未开始（按指令顺序刻意推迟）：Jev（省赛阶段不接）、真实 GLM/GLM-Image Key 接入（接口已就绪，配置即用）
 
 ---
 
@@ -118,23 +118,58 @@ POST /api/site/generate               首次 AI 建站同时落站点实体
 
 **前端（src/）**：`App.jsx`、`services/api.js`、`components/layout/{Sidebar, Topbar, AppLayout}.jsx`、`pages/Login/Login.jsx`（含 422 错误数组致白屏的修复）、`pages/PageEditor/PageEditor.jsx`、`pages/Versions/VersionsPage.jsx`、`pages/AIGrowth/AIGrowth.jsx`；新增 `pages/Overview/`、`pages/Sites/`（4 文件+css）、`pages/Customers/`、`pages/Analytics/`、`pages/Settings/`、`pages/Templates/{templates-data.js, TemplatePreview.jsx, templates.css}`、`pages/Templates/TemplatesPage.jsx`（重写）
 
+**第三批（AI 生成）**：后端新增 `app/prompts/`（7 模块）、`app/image_provider.py`、`app/market_profiles/`（3 JSON）+ `app/market_profiles.py`、`app/services/site_generation.py`、`app/routers/brush.py`、`tests/test_generation_and_entitlements.py`（12 例）；修改 `models.py`（Asset）、`schemas.py`、`config.py`（image 配置）、`main.py`、`routers/sites.py`（/generate + /assets）、`routers/site.py`（/market-profiles）。前端新增 `pages/Sites/AISiteOnboarding.jsx`；修改 `AppContext.jsx`（SET_USAGE/refreshUsage）、`PageEditor.jsx`（AI 画笔 Pro 入口）、`api.js`（generateSite/assets/marketProfiles/brushPreview）。
+
 **资产**：`public/template-assets/<6 模板>/*.webp`（真实 Demo 截图，共 30 张）
 **测试/工具**：`test/e2e-multisite.mjs`（新）、`test/e2e-navigation.mjs`、`test/e2e*.mjs`（chrome 路径参数化）、`tools/capture-template-previews.mjs`（新）
 **截图**：`docs/screenshots/`（overview / sites / site-detail / site-editor / settings / analytics / templates-public / template-demo）
 
 ---
 
-## 4. 遗留事项（按指令顺序，下一阶段处理）
+## 4. 第三批阶段：AI 生成 / Market Profile / Entitlement（2026-10-08 追加）
 
-1. **P0-AI-SITE-GENERATION**（第三条指令）：产品类别 → 结构化 SiteGenerationPlan → GLM → GLM-Image 整站生成；ImageProvider 接口；asset source_type=REAL/AI_GENERATED。**尚未开始**（指令明确要求多站点先通过后再做）。
+### 4.1 P0-AI-SITE-GENERATION（产品类别 → 整站生成）
+
+**后端**
+- `app/prompts/`：7 个专业能力模块（industry_analyzer / buyer_persona / market_localization / site_planner / image_brief / seo_optimizer / buyer_conversion），各自 SYSTEM + 输入构造器 + 输出 schema —— 提示词不再散落前端。
+- `app/image_provider.py`：`ImageProvider` 抽象 + `GLMImageProvider`（OpenAI 兼容图像协议，`SITEPILOT_IMAGE_API_KEY/BASE_URL/MODEL` 配置，默认 GLM-Image 端点）+ `MockImageProvider`（确定性 SVG 占位，按市场配色区分）。图像 API 不写死在页面组件。
+- `Asset` 模型：site_id / market / section_id / role / **source_type（REAL | AI_GENERATED）** / provider / prompt / url —— 图片全部溯源。
+- `POST /api/sites/generate`：结构化生成链（Industry Profile → Buyer Persona → Market Profile → Site Plan → Image Briefs → ImageProvider）→ 落站点 + 6 页面（首页 = plan 的结构决策）+ AI 图片资产；`GET /api/sites/{id}/assets` 按站点/市场查询。
+- 图片 prompt 组装必含 product_category / market / buyer / style / composition，并强制 `no fabricated certification marks` —— AI 不伪造证书/铭牌/厂房证据。
+- LLM 未配置时全程降级为**类别感知的内置模板**（`_source: template`），配置真实 GLM Key 后自动升级，无需改代码。
+
+**前端**
+- `AISiteOnboarding.jsx`：五步引导（基础信息 → 目标客户 → 目标市场 → 网站风格 → 生成），与指令字段一一对应（company_name / product_category / product_description / target_buyer / target_markets / preferred_style）。
+- 生成结果页：三市场 hero 对照（可观察差异）+ AI 图片墙（每张带 AI/REAL 溯源标签）+ 一键进入站点管理。
+
+### 4.2 P0-MARKET-PROFILE（三语不是翻译）
+
+- `app/market_profiles/{zh-CN,en-US,ru-RU}.json`：13 个字段全量（content_hierarchy / buyer_focus / hero_strategy / product_card_fields / trust_evidence_priority / cta_style / faq_topics / visual_style / image_style / layout_density / typography_guidance / tone / seo_guidance），明确标注「基于目标市场采购阅读策略，可配置、可用真实数据更新」。
+- Fact/Market 分层：`SHARED_FACT_FIELDS`（SKU/参数/认证/MOQ/交期等）共享且不得被市场 AI 改写；`GET /api/market-profiles` 同时下发两层边界。
+
+### 4.3 P0-ENTITLEMENT（免费一次 + AI 画笔付费）
+
+- 免费完整生成 = **账号级 1 次**（Usage 单例）：生成成功落库后才扣（同事务），422 校验失败不扣，免费额度用完 + free 套餐 → 402（带 feature/requiredPlan/upgradeUrl），付费套餐继续。
+- AI 画笔：`POST /api/brush/preview` 后端硬校验 —— 无权限一律 **403**（不依赖前端锁）；前端编辑器「✨ AI 画笔 · Pro」按钮**可见**，免费用户点击弹升级墙（符合“看得到才知道为什么付费”）。
+- 前端：生成成功后 `refreshUsage()` 即时刷新侧栏额度（服务端为真源）。
+
+### 4.4 本批验证
+
+- pytest：**258 / 258 通过**（新增 `test_generation_and_entitlements.py` 12 例：market profile 字段/差异、生成全链路、三市场 hero 互异、图片溯源与 prompt 类别相关性、额度事务性、402/403/404/401 边界、租户隔离）。
+- 浏览器实测：五步表单 → 输入「工业水泵」→ 生成站点（7 板块 / 3 市场版本 / 12 张 AI 图片）→ 三市场 hero 实测互不相同（中「批量制造与定制·获取报价方案」/ 英「Engineered for Your Projects·Get a Quote」/ 俄「для промышленных объектов·Запросить расчёт」）→ 免费额度扣为 0/1 → 二次生成 402 → 编辑器点 AI 画笔弹 Pro 升级墙。
+
+## 5. 遗留事项（按指令顺序，下一阶段处理）
+
+1. ~~P0-AI-SITE-GENERATION~~ **已完成**（见第 4 节）；真实 GLM/GLM-Image 效果需配置 API Key（`SITEPILOT_LLM_*` / `SITEPILOT_IMAGE_*`），当前为类别感知模板链路。
 2. Product 仍为租户级（第一阶段方案，符合指令）；站点级产品排序/定价未做。
-3. AI 画笔（brush.edit）为已注册付费能力，编辑器内入口未实现（属 P0-ENTITLEMENT 阶段）。
-4. Buyer Conversion / Policy / Asset 独立模型未建（后续阶段随 AI 生成一起引入，届时直接带 site_id）。
-5. 独立站前台（site-preview.html）按 `?site=` 渲染已支持，前台市场切换与站点资产渲染的深度整合在 Market Profile 阶段处理。
+3. ~~AI 画笔付费墙~~ **已完成**（前端可见入口 + 后端 403 硬校验）；画笔的圈选交互与视觉 Diff 本体属后续迭代。
+4. Buyer Conversion / Policy 独立模型未建（buyer_conversion prompt 已就绪，模型随后续阶段引入并直接带 site_id）。
+5. 独立站前台（site-preview.html）按 `?site=` 渲染已支持，前台消费 AI 生成资产（Asset.url）的深度整合在下一阶段处理。
 6. Playwright E2E 需在装有 Playwright 浏览器的环境（CI / `npx playwright install chromium`）跑通；本机验证由内置浏览器完成同等链路。
-7. 免费生成=账号级 1 次：语义已在后端 Usage 单例 + 测试中固定；“生成失败不扣额度”的事务性消费在 AI 生成落地时实现。
+7. starter 套餐 5 次/月的精确计数未实现（当前：免费 1 次用完后任何付费套餐不限次）；真实计费接入时一并处理。
+8. **GitHub Pages 部署**：代码/工作流/本地仓库已就绪（`.github/workflows/deploy-pages.yml` + `DEPLOYMENT.md`），等待用户完成 GitHub 设备授权后推送并发布公开链接。
 
-## 5. 本机验证环境
+## 6. 本机验证环境
 
 - 后端 `uvicorn :8000`（SQLite，启动时自动完成多站点迁移）；前端 `vite :5173`
 - Node v22.14.0（便携）、Python 3.14、pytest 246/246

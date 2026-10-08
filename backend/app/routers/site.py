@@ -89,6 +89,18 @@ async def generate_site(payload: schemas.SiteGenerateInput, db: Session = Depend
     return {"ok": True, "site_id": created_site.id if created_site else None, **payload.model_dump()}
 
 
+@router.get("/market-profiles")
+def get_market_profiles(tid: int = Depends(tenant_scope)):
+    """三语市场表达配置 + 共享事实层说明（P0-MARKET-PROFILE）。
+
+    Market Layer（层级/文案/视觉/CTA）允许不同；Fact Layer（SKU/参数/认证等
+    商品事实）共享且不得被市场 AI 改写 —— 这里同时下发两层的边界。
+    """
+    from .. import market_profiles as mp
+
+    return {"ok": True, **mp.market_summary()}
+
+
 @router.get("/usage")
 def get_usage(db: Session = Depends(get_db), tid: int = Depends(tenant_scope)):
     return _usage(db, tid).to_dict()

@@ -131,6 +131,26 @@ class SiteProductLink(BaseModel):
     product_id: str = Field(min_length=1, max_length=64)
 
 
+class SiteGenerateRequest(BaseModel):
+    """AI 整站生成（AI Site Onboarding）输入。product_category 必填。"""
+
+    company_name: str = Field(default="", max_length=255)
+    product_category: str = Field(min_length=1, max_length=255)
+    product_description: str = Field(default="", max_length=2000)
+    target_buyer: str = Field(default="", max_length=255)
+    target_markets: list[Market] = Field(default_factory=lambda: ["zh-CN", "en-US", "ru-RU"])
+    preferred_style: str = Field(default="professional", max_length=32)
+    template_preference: str = Field(default="", max_length=64)
+    uploaded_product_images: list[str] = Field(default_factory=list)
+
+
+class BrushPreviewRequest(BaseModel):
+    """AI 画笔预览（付费能力 brush.edit 的后端校验入口）。"""
+
+    page_id: str = Field(min_length=1, max_length=64)
+    instruction: str = Field(min_length=1, max_length=500)
+
+
 class SiteGenerateInput(BaseModel):
     company: str = Field(default="", max_length=255)
     industry: str = Field(default="", max_length=255)

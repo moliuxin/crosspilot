@@ -67,6 +67,7 @@ export default function PageEditor() {
   const [saving, setSaving] = useState(false)
   const [dirty, setDirty] = useState(false)
   const [rewriting, setRewriting] = useState(false)
+  const [brushLoading, setBrushLoading] = useState(false)
   const [suggest, setSuggest] = useState(null) // { section_id, field, before, after }
   const [market, setMarket] = useState('en-US')
 
@@ -185,6 +186,31 @@ export default function PageEditor() {
     toast('已应用到编辑器，记得保存')
   }
 
+  // AI 画笔（Pro）：免费用户可见入口但必须先升级；后端 403/403 硬校验不依赖前端锁
+  async function handleBrush() {
+    if (!pageId) {
+      toast('请先选择一个页面', 'warn')
+      return
+    }
+    setBrushLoading(true)
+    try {
+      const res = await api.brushPreview(pageId, '检查当前页面可圈选的区块')
+      toast(res?.note || 'AI 画笔已开通：圈选内容并自然语言修改，改动走草稿与版本')
+    } catch (err) {
+      if (err?.status === 403 || err?.status === 402) {
+        openPaywall(
+          'AI 画笔 · Pro',
+          err?.detail?.message || 'AI 画笔属于 Pro 能力。通过自然语言圈选并修改页面内容，所有修改支持 Diff 和版本回滚。',
+          'brush.edit'
+        )
+      } else {
+        toast(err?.detail || 'AI 画笔暂不可用', 'warn')
+      }
+    } finally {
+      setBrushLoading(false)
+    }
+  }
+
   return (
     <section className="view">
       <div className="page-head">
@@ -195,6 +221,9 @@ export default function PageEditor() {
         </div>
         <div className="head-actions">
           {dirty && <span className="dirty-pill">● 有未保存修改</span>}
+          <button className="ghost-btn pro-feature" onClick={handleBrush} disabled={brushLoading} title="自然语言圈选并修改页面内容（Pro）">
+            {brushLoading ? '✨ AI 画笔…' : '✨ AI 画笔 · Pro'}
+          </button>
           <button className="ghost-btn" onClick={() => setDevice(device === 'mobile' ? 'desktop' : 'mobile')}>
             {device === 'mobile' ? '切换桌面预览' : '切换移动预览'}
           </button>

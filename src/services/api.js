@@ -277,6 +277,33 @@ export const api = {
     return true
   },
 
+  /** AI 整站生成:产品类别 → 结构化 plan → 站点+页面+图片资产(本地降级不可用,必须后端)。 */
+  async generateSite(payload) {
+    const { ok, data, error } = await http('POST', '/sites/generate', payload)
+    if (!ok) throw error
+    return data
+  },
+
+  /** 站点视觉资产(REAL / AI_GENERATED 溯源)。 */
+  async getSiteAssets(siteId, market) {
+    const qs = market ? `?market=${encodeURIComponent(market)}` : ''
+    const { ok, data } = await http('GET', `/sites/${encodeURIComponent(siteId)}/assets${qs}`)
+    return ok ? data.assets || [] : []
+  },
+
+  /** 三语 Market Profile + 共享事实层说明。 */
+  async getMarketProfiles() {
+    const { ok, data } = await http('GET', '/market-profiles')
+    return ok ? data : null
+  },
+
+  /** AI 画笔预览(付费能力,免费账户后端 403)。 */
+  async brushPreview(pageId, instruction) {
+    const { ok, data, error } = await http('POST', '/brush/preview', { page_id: pageId, instruction })
+    if (!ok) throw error
+    return data
+  },
+
   /* ---------------- 独立站前台（匿名只读） ---------------- */
 
   /** 按租户 slug 读取已发布站点（无需登录；失败返回 null 由调用方兜底）。 */

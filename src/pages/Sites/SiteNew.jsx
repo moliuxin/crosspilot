@@ -4,6 +4,7 @@ import { api } from '../../services/api'
 import { useApp } from '../../app/store/AppContext'
 import { marketTemplates, marketOrder } from '../../data/marketTemplates'
 import { TEMPLATES } from '../Templates/templates-data'
+import AISiteOnboarding from './AISiteOnboarding'
 import './sites.css'
 
 /**
@@ -98,21 +99,7 @@ export default function SiteNew() {
         </button>
       </div>
 
-      {mode === 'ai' && (
-        <div className="panel create-ai-panel">
-          <div className="panel-head">
-            <div>
-              <strong>AI 站点引导（AI Site Onboarding）</strong>
-              <span>产品类别 → 目标客户 → 目标市场 → 风格 → 生成</span>
-            </div>
-          </div>
-          <p className="create-ai-hint">
-            AI 将先理解你的产品类别，生成 Industry Profile、Buyer Persona、Site Plan 与 Image Brief，
-            再产出结构与市场文案；中 / 英 / 俄是不同市场版本，不是翻译。
-          </p>
-          <Link className="primary-btn" to="/onboarding">进入 AI 建站引导 →</Link>
-        </div>
-      )}
+      {mode === 'ai' && <AISiteOnboarding />}
 
       {mode === 'template' && (
         <div className="panel">

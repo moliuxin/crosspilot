@@ -232,6 +232,47 @@ class SiteProduct(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
 
+class Asset(Base):
+    """站点视觉资产（P0-AI-SITE-GENERATION）。
+
+    source_type 必须二选一：
+    - REAL          用户真实上传（产品图等，优先展示）
+    - AI_GENERATED  模型生成（Hero / 场景 / 氛围图；禁止伪造证书铭牌等事实元素）
+    """
+
+    __tablename__ = "assets"
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    tenant_id: Mapped[int] = mapped_column(Integer, default=DEFAULT_TENANT_ID, index=True)
+    site_id: Mapped[str] = mapped_column(String(64), default="", index=True)
+    market: Mapped[str] = mapped_column(String(16), default="", index=True)
+    section_id: Mapped[str] = mapped_column(String(64), default="")
+    role: Mapped[str] = mapped_column(String(32), default="")  # hero|application_scene|background|market_mood|product
+
+    source_type: Mapped[str] = mapped_column(String(16), default="AI_GENERATED")  # REAL | AI_GENERATED
+    provider: Mapped[str] = mapped_column(String(32), default="")
+    prompt: Mapped[str] = mapped_column(Text, default="")
+    url: Mapped[str] = mapped_column(Text, default="")
+    note: Mapped[str] = mapped_column(String(255), default="")
+
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, index=True)
+
+    def to_dict(self) -> dict:
+        return {
+            "id": self.id,
+            "site_id": self.site_id,
+            "market": self.market,
+            "section_id": self.section_id,
+            "role": self.role,
+            "source_type": self.source_type,
+            "provider": self.provider,
+            "prompt": self.prompt,
+            "url": self.url,
+            "note": self.note,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+        }
+
+
 class SiteState(Base):
     """站点设置（每租户一行，主键即 tenant_id）。
 

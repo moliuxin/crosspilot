@@ -17,6 +17,7 @@ from .database import Base, SessionLocal, engine
 from .routers import (
     agent,
     auth,
+    brush,
     company,
     credits,
     entitlements as entitlements_router,
@@ -263,6 +264,7 @@ for r in (
     inquiries.router,
     pages.router,
     sites.router,
+    brush.router,
     tasks.router,
     credits.router,
     site.router,

@@ -29,6 +29,12 @@ class Settings(BaseSettings):
     llm_model: str = "gpt-4o-mini"
     llm_timeout: float = 60.0
 
+    # Image provider（GLM-Image 走 OpenAI 兼容图像协议；未配置 key 时用 mock 占位图）
+    image_api_key: str = ""
+    image_base_url: str = "https://open.bigmodel.cn/api/paas/v4"
+    image_model: str = "cogview-4"
+    image_timeout: float = 120.0
+
     # 免费额度策略
     free_generation_limit: int = 1
 

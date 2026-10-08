@@ -70,6 +70,8 @@ function reducer(state, action) {
     }
     case 'SET_PLAN':
       return { ...state, site: { ...state.site, plan: action.plan } }
+    case 'SET_USAGE':
+      return { ...state, usage: { ...state.usage, ...action.usage } }
     case 'ADD_DRAFT': {
       // 同一个草稿可能被重复添加：Agent 页每次挂载会全量拉取后端草稿，
       // 若用户重复执行同一条指令（或刷新后重跑），会拿到同一个 draft.id。
@@ -136,6 +138,16 @@ export function AppProvider({ children }) {
     } catch {
       setEntitlements(null)
       return null
+    }
+  }, [])
+
+  // 免费生成额度等用量由服务端裁定（账号级）；本地只是视图镜像，用后强制刷新
+  const refreshUsage = useCallback(async () => {
+    try {
+      const u = await api.getUsage()
+      if (u) dispatch({ type: 'SET_USAGE', usage: u })
+    } catch {
+      /* 后端不可用时保留本地视图 */
     }
   }, [])
 
@@ -233,6 +245,7 @@ export function AppProvider({ children }) {
       // 统一付费权限：真源来自后端，页面一律通过 useEntitlement 消费
       entitlements,
       refreshEntitlements,
+      refreshUsage,
       // 免费完整生成剩余次数（持久化，初始 1/1）
       remainingGenerations: Math.max(0, state.usage.freeGenerationLimit - state.usage.freeGenerationUsed),
       isFree: entitlements ? entitlements.plan === 'free' : state.site.plan === 'free',
@@ -253,7 +266,7 @@ export function AppProvider({ children }) {
         dispatch({ type: 'DISCARD_DRAFT', id })
       },
     }),
-    [state, toast, openPaywall, mode, aiStatus, authState, user, login, register, logout, entitlements, refreshEntitlements]
+    [state, toast, openPaywall, mode, aiStatus, authState, user, login, register, logout, entitlements, refreshEntitlements, refreshUsage]
   )
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>
