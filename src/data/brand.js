@@ -1,14 +1,14 @@
 // 品牌配置：驱动「进入动效」「等待页」「独立站前台」的品牌识别。
-// 关键约束：绝不写死 WorkBuddy 自己的品牌色/Logo —— 优先用商家（客户）自己的配置。
+// 关键约束：绝不写死平台自己的品牌色/Logo —— 优先用商家（客户）自己的配置。
 //
 // 商家配置优先级：
 //   1. company.brand（商家上传的 Logo / 品牌色）—— 生成独立站、等待页默认用它
-//   2. 平台兜底（WorkBuddy）—— 仅当商家未提供时才使用
+//   2. 平台兜底（CrossPilot）—— 仅当商家未提供时才使用
 
 export const PLATFORM_BRAND = {
-  name: 'WorkBuddy',
+  name: 'CrossPilot',
   sub: 'SITEPILOT',
-  logoText: 'W',
+  logoText: 'C',
   primary: '#315efb',
   primary2: '#244bd1',
   dark: '#101828',
@@ -51,5 +51,5 @@ export function resolveBrand(company, fallback = 'merchant') {
 
 // 品牌首字母（无 Logo 图时用于文字 Logo）
 export function brandInitial(brand) {
-  return (brand?.logoText || brand?.name || 'W').trim().charAt(0).toUpperCase()
+  return (brand?.logoText || brand?.name || 'C').trim().charAt(0).toUpperCase()
 }

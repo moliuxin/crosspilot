@@ -122,7 +122,7 @@ function PublicShell({ children }) {
     <div className="tpl-public-page">
       <header className="tpl-public-head">
         <div className="tpl-public-brand">
-          <span className="mark">W</span>
+          <span className="mark">C</span>
           <div>
             <strong>CrossPilot</strong>
             <span>面向 B2B 出海的 AI 建站与获客平台 · 中 / 英 / 俄</span>

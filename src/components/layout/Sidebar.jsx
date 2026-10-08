@@ -39,7 +39,7 @@ export default function Sidebar({ open, onClose }) {
   return (
     <aside className={`sidebar${open ? ' open' : ''}`}>
       <div className="brand-row">
-        <div className="brand-mark">W</div>
+        <div className="brand-mark">C</div>
         <div>
           <div className="brand-name">CrossPilot</div>
           <div className="brand-sub">AI 出海建站 · SITEPILOT</div>

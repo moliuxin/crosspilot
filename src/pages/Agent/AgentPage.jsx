@@ -25,9 +25,9 @@ export default function AgentPage() {
     {
       id: makeId(),
       role: 'bot',
-      title: 'WorkBuddy Agent',
+      title: 'CrossPilot Agent',
       text:
-        '你好，我是 WorkBuddy Agent。我可以通过 MCP 工具读取你的站点数据、生成优化草稿。' +
+        '你好，我是 CrossPilot Agent。我可以通过 MCP 工具读取你的站点数据、生成优化草稿。' +
         '任何会修改内容的动作我都会先出一份 Draft + Diff，需要你明确确认后才会发布。',
     },
   ])

@@ -573,7 +573,7 @@ function SiteFooter({ brand, market, t }) {
         <span>
           © {new Date().getFullYear()} {brand.name}. All rights reserved.
         </span>
-        <span>Built with WorkBuddy SitePilot</span>
+        <span>Built with CrossPilot</span>
       </div>
     </footer>
   )
