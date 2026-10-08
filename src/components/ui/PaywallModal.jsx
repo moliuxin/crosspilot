@@ -37,20 +37,35 @@ export default function PaywallModal() {
 
   const close = () => dispatch({ type: 'PAYWALL_CLOSE' })
 
-  // 选择套餐：写入真实 ServiceOrder；featureKey 一并记录，支持单项能力加购
+  // 选择套餐：写入真实 ServiceOrder 并**演示支付即时开通**（approve），
+  // 付款成功后 Subscription 立即变更、权限即刻生效（如 AI 画笔马上可用）
   const applyPlan = async (p) => {
     if (submitting) return
     setSubmitting(true)
     try {
-      await api.createServiceOrder({
+      const res = await api.createServiceOrder({
         plan_id: p.id,
         feature_key: paywall.featureKey || '',
         note: paywall.feature ? `申请来源：${paywall.feature}` : '',
       })
+      const orderId = res?.order?.id
+      let activated = false
+      if (orderId) {
+        try {
+          await api.approveServiceOrder(orderId)
+          activated = true
+        } catch {
+          /* 审批接口不可用时退回「申请受理」文案 */
+        }
+      }
+      await refreshEntitlements?.()
       close()
-      toast(`已提交「${p.name}」开通申请（订单已写入服务记录），可在「使用说明 · 我的订单」查看`)
-      // 企业侧 Demo：提交即视为已受理，刷新权限以反映最新状态
-      refreshEntitlements?.()
+      toast(
+        activated
+          ? `「${p.name}」支付成功，已即时开通 —— ${paywall.feature || '付费能力'}现在可以使用了`
+          : `已提交「${p.name}」开通申请（订单已写入服务记录），可在「使用说明 · 我的订单」查看`,
+        'success'
+      )
     } catch (e) {
       toast(`提交失败：${e?.message || '后端服务不可用'}`, 'warn')
     } finally {
