@@ -78,8 +78,8 @@ export default function Login() {
     <div className="auth-page">
       <div className="auth-card">
         <div className="auth-brand">
-          <span className="auth-logo">SitePilot</span>
-          <span className="auth-tagline">AI 外贸独立站智能体</span>
+          <span className="auth-logo">CrossPilot</span>
+          <span className="auth-tagline">AI 出海建站 · 中英俄多市场获客平台</span>
         </div>
 
         {offline && (
