@@ -1,0 +1,58 @@
+{
+  "company": {
+    "id": "company_demo_001",
+    "name": "Apex Industrial",
+    "industry": "industrial equipment",
+    "primary_products": ["centrifugal pump", "process pump"],
+    "target_markets": ["en-US", "ru-RU", "zh-CN"],
+    "website": "",
+    "contact_name": "Demo User",
+    "phone": "+1 000 000 0000",
+    "verified": true,
+    "free_full_generation_limit": 1,
+    "free_full_generation_used": 1,
+    "plan": "free"
+  },
+  "product": {
+    "id": "prod_001",
+    "name": "Industrial Centrifugal Pump",
+    "model": "ACP-200",
+    "category": "Pumps",
+    "images": [],
+    "specs": [{"key": "Flow", "value": "200 m3/h"}],
+    "benefits": ["Stable operation", "Easy maintenance"],
+    "applications": ["Water treatment", "Industrial circulation"],
+    "seo_score": 58,
+    "seo": {
+      "title": "Water Pump",
+      "slug": "/product?id=23",
+      "meta_description": "",
+      "h1": "Water Pump",
+      "faq": [],
+      "image_alt": [],
+      "schema_enabled": false
+    },
+    "localized_content": {
+      "zh-CN": {},
+      "en-US": {},
+      "ru-RU": {}
+    }
+  },
+  "inquiry": {
+    "id": "rfq_001",
+    "customer_name": "John Smith",
+    "country": "United States",
+    "product_id": "prod_001",
+    "source_page": "/products/industrial-centrifugal-pump",
+    "created_at": "2026-10-02T10:00:00Z",
+    "status": "new",
+    "message": "Please quote 10 units."
+  },
+  "page": {
+    "id": "page_home",
+    "type": "home",
+    "market": "en-US",
+    "status": "draft",
+    "sections": ["hero", "trust", "categories", "products", "applications", "capabilities", "cases", "certificates", "faq", "rfq", "footer"]
+  }
+}

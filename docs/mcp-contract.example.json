@@ -1,0 +1,50 @@
+{
+  "mcp_tools": [
+    {
+      "name": "get_site_pages",
+      "input": {"market": "string?"},
+      "output": {"pages": "Page[]"}
+    },
+    {
+      "name": "get_products",
+      "input": {"market": "string?", "query": "string?", "limit": "number?"},
+      "output": {"products": "Product[]"}
+    },
+    {
+      "name": "get_product_detail",
+      "input": {"product_id": "string"},
+      "output": {"product": "Product"}
+    },
+    {
+      "name": "get_inquiries",
+      "input": {"date_from": "string?", "date_to": "string?", "status": "string?"},
+      "output": {"inquiries": "Inquiry[]"}
+    },
+    {
+      "name": "get_seo_metrics",
+      "input": {"page_id": "string?", "product_id": "string?"},
+      "output": {"score": "number", "issues": "SEOIssue[]"}
+    },
+    {
+      "name": "get_language_versions",
+      "input": {"entity_type": "page|product", "entity_id": "string"},
+      "output": {"versions": "LocalizedVersion[]"}
+    },
+    {
+      "name": "update_draft",
+      "input": {"entity_type": "page|product", "entity_id": "string", "patch": "object"},
+      "output": {"draft_id": "string", "diff": "Diff[]"}
+    },
+    {
+      "name": "publish_page",
+      "input": {"draft_id": "string", "human_confirmed": true},
+      "output": {"published": "boolean", "version": "string"}
+    },
+    {
+      "name": "rollback_version",
+      "input": {"entity_id": "string", "version": "string"},
+      "output": {"rolled_back": "boolean"}
+    }
+  ],
+  "agent_safety_rule": "Any content-changing action must first create a draft and return a diff. Publish requires explicit human confirmation."
+}
