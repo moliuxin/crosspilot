@@ -29,6 +29,7 @@ import AnalyticsPage from './pages/Analytics/AnalyticsPage'
 import SettingsPage from './pages/Settings/SettingsPage'
 import Onboarding from './pages/Onboarding/Onboarding'
 import Login from './pages/Login/Login'
+import GlobeIntro from './components/globe/GlobeIntro'
 import { api } from './services/api'
 
 /** 旧路由 /editor 的兼容跳转：进入第一个站点的编辑器。 */
@@ -59,17 +60,16 @@ function Routed() {
     )
   }
 
-  // 未登录：模板商城 / 模板预览为公开路由。
-  // 静态部署（GitHub Pages 等无后端环境）→ 公开主页落到模板商城；
-  // 自托管（后端在线）→ 收敛到登录页进入商家工作台。
+  // 未登录：3D 地球入场页 / 登录 / 模板商城（含预览）为公开路由。
+  // 地球页是访客第一屏（拖动交互），从那里进入模板商城或登录。
   if (authState === 'anon') {
-    const landing = dataMode === 'backend' ? '/login' : '/templates'
     return (
       <Routes>
+        <Route path="/intro" element={<GlobeIntro />} />
         <Route path="/login" element={<Login />} />
         <Route path="/templates" element={<PublicShell><TemplatesPage /></PublicShell>} />
         <Route path="/templates/:slug" element={<PublicShell><TemplatePreview /></PublicShell>} />
-        <Route path="*" element={<Navigate to={landing} replace />} />
+        <Route path="*" element={<Navigate to="/intro" replace />} />
       </Routes>
     )
   }
