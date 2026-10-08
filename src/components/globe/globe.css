@@ -1,0 +1,151 @@
+/* 3D 交互地球入场页 */
+.globe-page {
+  position: fixed;
+  inset: 0;
+  background:
+    radial-gradient(1200px 800px at 70% 30%, rgba(14, 30, 66, 0.9), rgba(4, 8, 20, 1)),
+    #040814;
+  overflow: hidden;
+}
+
+.globe-page canvas {
+  position: absolute;
+  inset: 0;
+  cursor: grab;
+  touch-action: none;
+}
+.globe-page canvas:active {
+  cursor: grabbing;
+}
+
+.globe-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 30px 44px;
+  pointer-events: none;
+}
+
+.globe-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.globe-brand .mark {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  font-size: 20px;
+  font-weight: 800;
+  color: #fff;
+  background: linear-gradient(135deg, #2563eb, #06b6d4);
+  box-shadow: 0 6px 24px rgba(37, 99, 235, 0.45);
+}
+.globe-brand strong {
+  display: block;
+  font-size: 17px;
+  letter-spacing: 0.02em;
+  color: #f1f5ff;
+}
+.globe-brand span {
+  display: block;
+  font-size: 11.5px;
+  color: #8fa3c8;
+  margin-top: 2px;
+}
+
+.globe-copy {
+  align-self: flex-start;
+  max-width: 520px;
+  margin-top: 4vh;
+}
+.globe-eyebrow {
+  font-size: 11px;
+  letter-spacing: 0.34em;
+  font-weight: 700;
+  color: #38bdf8;
+  margin-bottom: 14px;
+}
+.globe-copy h1 {
+  font-size: clamp(38px, 6vw, 64px);
+  line-height: 1.08;
+  letter-spacing: -0.02em;
+  margin: 0 0 16px;
+  background: linear-gradient(92deg, #f8fafc 20%, #7dd3fc 90%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.globe-copy p {
+  font-size: 14.5px;
+  line-height: 1.9;
+  color: #a9bcd9;
+  margin: 0 0 26px;
+  max-width: 430px;
+}
+
+.globe-actions {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+  pointer-events: auto;
+}
+.g-btn {
+  border: none;
+  border-radius: 12px;
+  padding: 13px 26px;
+  font-size: 14.5px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+}
+.g-btn:hover {
+  transform: translateY(-1px);
+}
+.g-primary {
+  color: #fff;
+  background: linear-gradient(135deg, #2563eb, #06b6d4);
+  box-shadow: 0 10px 30px rgba(37, 99, 235, 0.4);
+}
+.g-primary:hover {
+  box-shadow: 0 14px 36px rgba(37, 99, 235, 0.55);
+}
+.g-ghost {
+  color: #dbe7ff;
+  background: rgba(148, 180, 255, 0.08);
+  border: 1px solid rgba(148, 180, 255, 0.35);
+}
+.g-ghost:hover {
+  background: rgba(148, 180, 255, 0.16);
+}
+
+.globe-hint {
+  margin-top: 22px;
+  font-size: 12px;
+  color: #64779c;
+}
+
+.globe-foot {
+  font-size: 11.5px;
+  color: #4a5b7c;
+  letter-spacing: 0.08em;
+}
+
+@media (max-width: 720px) {
+  .globe-overlay {
+    padding: 22px;
+  }
+  .globe-copy {
+    max-width: 100%;
+  }
+  .globe-copy h1 {
+    font-size: 34px;
+  }
+  .globe-page canvas {
+    opacity: 0.55;
+  }
+}
