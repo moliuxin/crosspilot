@@ -85,6 +85,7 @@ export default function Topbar({ onMenu }) {
             {aiMeta.dot} {aiMeta.label}
           </span>
         )}
+        <Link className="ghost-btn top-home-btn" to="/intro" title="回到平台首页（3D 地球）">⌂ 回到首页</Link>
         <Link className="ghost-btn" to="/help">帮助</Link>
       </div>
     </header>
