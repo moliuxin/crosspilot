@@ -1,0 +1,116 @@
+{
+ "industry_id": "building_materials",
+ "aliases": [
+  "建材",
+  "建筑材料",
+  "陶瓷",
+  "板材",
+  "石材",
+  "型材",
+  "building materials",
+  "ceramics",
+  "tiles",
+  "panels",
+  "строительные материалы",
+  "керамика"
+ ],
+ "summary": "工程与分销并重的建材类;买家关心物理性能指标与工程案例,网站要同时服务工程商与经销商。",
+ "decision_model": "B2B 工程+分销双轨 · RFQ + 样品索取",
+ "avg_order_value": "mid",
+ "buyer_roles": [
+  "architect",
+  "contractor",
+  "distributor"
+ ],
+ "buyer_pain_points": [
+  {
+   "id": "spec_standards",
+   "severity": "high",
+   "pain": {
+    "ru": "Соответствие стандартам (ГОСТ/EN)",
+    "en": "Standards compliance (GOST/EN)",
+    "zh": "符合标准(ГОСТ/EN)"
+   },
+   "site_answer": "检测报告 + 标准对照表"
+  },
+  {
+   "id": "logistics",
+   "severity": "mid",
+   "pain": {
+    "ru": "Логистика и целостность при доставке",
+    "en": "Logistics and delivery integrity",
+    "zh": "物流与破损率"
+   },
+   "site_answer": "包装标准 + 损耗率承诺"
+  },
+  {
+   "id": "project_reference",
+   "severity": "mid",
+   "pain": {
+    "ru": "Нужны референсы проектов",
+    "en": "Need project references",
+    "zh": "需要工程案例"
+   },
+   "site_answer": "地标项目案例库"
+  }
+ ],
+ "trust_requirements": [
+  "ISO 9001",
+  "CE",
+  "ГОСТ",
+  "SGS 检测"
+ ],
+ "content_priorities": [
+  "物理性能",
+  "花色系列",
+  "工程案例",
+  "起订量"
+ ],
+ "layout_hints": {
+  "layout_variant": "editorial",
+  "grid": "4 列 · 4:5 图 · 留白优先",
+  "hero": "全屏沉浸",
+  "sections_priority": [
+   "hero",
+   "collections",
+   "products",
+   "cases",
+   "rfq"
+  ]
+ },
+ "visual_hints": {
+  "keywords": [
+   "质感",
+   "大图",
+   "样板间"
+  ],
+  "palette_family": "warm_neutral",
+  "imagery_keywords": [
+   "building facade",
+   "ceramic tile texture",
+   "architecture interior"
+  ]
+ },
+ "marketing_lexicon": {
+  "zh": [
+   "工程品质",
+   "花色齐全",
+   "稳定供货"
+  ],
+  "en": [
+   "project grade",
+   "full range",
+   "stable supply"
+  ],
+  "ru": [
+   "проектное качество",
+   "полная палитра",
+   "стабильные поставки"
+  ]
+ },
+ "image_keywords": [
+  "building ceramic tiles",
+  "construction material",
+  "architectural facade"
+ ]
+}

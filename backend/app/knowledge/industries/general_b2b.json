@@ -1,0 +1,113 @@
+{
+ "industry_id": "general_b2b",
+ "aliases": [
+  "外贸",
+  "出口",
+  "制造",
+  "工厂",
+  "B2B",
+  "manufacturer",
+  "factory",
+  "export",
+  "производитель",
+  "завод"
+ ],
+ "summary": "通用 B2B 制造出口类兜底画像;核心是把工厂能力、认证与交期讲清楚。",
+ "decision_model": "B2B 询价制 · 顾问式销售",
+ "avg_order_value": "mid",
+ "buyer_roles": [
+  "procurement manager",
+  "sourcing agent"
+ ],
+ "buyer_pain_points": [
+  {
+   "id": "supplier_trust",
+   "severity": "high",
+   "pain": {
+    "ru": "Можно ли доверять поставщику",
+    "en": "Can the supplier be trusted",
+    "zh": "供应商是否可信"
+   },
+   "site_answer": "工厂实拍 + 认证 + 验厂欢迎"
+  },
+  {
+   "id": "moq_leadtime",
+   "severity": "mid",
+   "pain": {
+    "ru": "MOQ и сроки неясны",
+    "en": "MOQ and lead time unclear",
+    "zh": "起订量与交期不明"
+   },
+   "site_answer": "明示 MOQ + 交期区间"
+  },
+  {
+   "id": "communication",
+   "severity": "mid",
+   "pain": {
+    "ru": "Языковой барьер и поддержка",
+    "en": "Language barrier and support",
+    "zh": "语言沟通与本地支持"
+   },
+   "site_answer": "多语言团队 + 本地化响应承诺"
+  }
+ ],
+ "trust_requirements": [
+  "ISO 9001",
+  "CE",
+  "工厂实拍",
+  "验厂报告"
+ ],
+ "content_priorities": [
+  "工厂能力",
+  "认证",
+  "交期",
+  "MOQ"
+ ],
+ "layout_hints": {
+  "layout_variant": "editorial",
+  "grid": "4 列 · 4:5 图",
+  "hero": "全屏沉浸",
+  "sections_priority": [
+   "hero",
+   "factory",
+   "products",
+   "cases",
+   "rfq"
+  ]
+ },
+ "visual_hints": {
+  "keywords": [
+   "可信",
+   "实干",
+   "干净"
+  ],
+  "palette_family": "professional_blue",
+  "imagery_keywords": [
+   "factory workshop",
+   "manufacturing line",
+   "quality inspection"
+  ]
+ },
+ "marketing_lexicon": {
+  "zh": [
+   "源头工厂",
+   "一站交付",
+   "全球发货"
+  ],
+  "en": [
+   "factory direct",
+   "one-stop delivery",
+   "worldwide shipping"
+  ],
+  "ru": [
+   "напрямую от производителя",
+   "комплексная поставка",
+   "доставка по всему миру"
+  ]
+ },
+ "image_keywords": [
+  "factory manufacturing",
+  "industrial production",
+  "quality control inspection"
+ ]
+}

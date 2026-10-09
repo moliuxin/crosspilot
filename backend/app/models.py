@@ -610,6 +610,43 @@ class Entitlement(Base):
         }
 
 
+class SkillRun(Base):
+    """Skill 执行记录(PHASE 1 Real Skill Engine):输入/输出/来源/积分,租户隔离。"""
+
+    __tablename__ = "skill_runs"
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    tenant_id: Mapped[int] = mapped_column(ForeignKey("tenants.id"), index=True)
+    site_id: Mapped[str] = mapped_column(String(64), default="", index=True)
+    skill_id: Mapped[str] = mapped_column(String(64), index=True)
+    skill_version: Mapped[str] = mapped_column(String(16), default="")
+    input_json: Mapped[dict] = mapped_column(JSON, default=dict)
+    output_json: Mapped[dict] = mapped_column(JSON, default=dict)
+    status: Mapped[str] = mapped_column(String(16), default="failed")  # success/failed
+    ai_source: Mapped[str] = mapped_column(String(32), default="")     # glm/template_fallback/template
+    model: Mapped[str] = mapped_column(String(64), default="")
+    latency_ms: Mapped[int] = mapped_column(Integer, default=0)
+    credits_used: Mapped[int] = mapped_column(Integer, default=0)
+    error: Mapped[str] = mapped_column(Text, default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, index=True)
+
+    def to_dict(self) -> dict:
+        return {
+            "id": self.id,
+            "skill_id": self.skill_id,
+            "skill_version": self.skill_version,
+            "status": self.status,
+            "ai_source": self.ai_source,
+            "model": self.model,
+            "latency_ms": self.latency_ms,
+            "credits_used": self.credits_used,
+            "input": self.input_json,
+            "output": self.output_json,
+            "error": self.error,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+        }
+
+
 class AIExecution(Base):
     """AI 运行日志（P0-REAL-AI-RUNTIME）：每次 LLM 调用的来源/耗时/成败，绝不保存 API Key。"""
 

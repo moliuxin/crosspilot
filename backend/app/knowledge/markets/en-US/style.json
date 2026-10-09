@@ -1,0 +1,10 @@
+{
+ "density": "medium",
+ "emphasis": {
+  "blocks": [
+   "benefits"
+  ],
+  "treatment": "oversized-quote"
+ },
+ "notes": "欧美:benefits 叙事优先,留白与可读性。"
+}

@@ -1,0 +1,128 @@
+{
+ "industry_id": "ai_hardware",
+ "aliases": [
+  "AI硬件",
+  "AI加速卡",
+  "推理服务器",
+  "智能计算",
+  "边缘计算盒",
+  "ai hardware",
+  "inference server",
+  "edge computing",
+  "gpu server",
+  "ИИ оборудование",
+  "сервер inference"
+ ],
+ "summary": "面向企业买家与集成商的算力设备类;决策核心是算力/功耗/生态兼容,网站要能快速对齐选型并引导询价。",
+ "decision_model": "B2B 技术评估型 · 决策链含架构师/采购 · RFQ 询价制",
+ "avg_order_value": "high",
+ "buyer_roles": [
+  "solution architect",
+  "procurement manager",
+  "data center operator"
+ ],
+ "buyer_pain_points": [
+  {
+   "id": "spec_opacity",
+   "severity": "high",
+   "pain": {
+    "ru": "Непонятны реальные TOPS/ватты под нагрузкой",
+    "en": "Real TOPS/watts under load unclear",
+    "zh": "实际算力与功耗不透明"
+   },
+   "site_answer": "实测数据表 + 型号对比 + 样机测试申请"
+  },
+  {
+   "id": "ecosystem_lock",
+   "severity": "high",
+   "pain": {
+    "ru": "Совместимость со стеком (CUDA/ONNX)",
+    "en": "Compatibility with stack (CUDA/ONNX)",
+    "zh": "与现有软件栈兼容性"
+   },
+   "site_answer": "支持框架清单 + 驱动下载 + 移植支持"
+  },
+  {
+   "id": "supply_stability",
+   "severity": "mid",
+   "pain": {
+    "ru": "Стабильность поставок и гарантия",
+    "en": "Supply stability and warranty",
+    "zh": "供货稳定性与质保"
+   },
+   "site_answer": "产能说明 + 质保条款 + 备货承诺"
+  },
+  {
+   "id": "tco",
+   "severity": "mid",
+   "pain": {
+    "ru": "Непонятна стоимость владения",
+    "en": "TCO unclear",
+    "zh": "总拥有成本不明"
+   },
+   "site_answer": "功耗对比 + 3 年 TCO 测算表"
+  }
+ ],
+ "trust_requirements": [
+  "CE",
+  "FCC",
+  "RoHS",
+  "ISO 9001",
+  "实测报告"
+ ],
+ "content_priorities": [
+  "实测性能",
+  "功耗",
+  "兼容生态",
+  "供货能力"
+ ],
+ "layout_hints": {
+  "layout_variant": "compact",
+  "grid": "4 列 · 1:1 图 · 卡片信息紧凑",
+  "hero": "半沉浸 · 参数行即卖点",
+  "sections_priority": [
+   "hero",
+   "key_specs",
+   "products",
+   "applications",
+   "faq",
+   "fast_quote"
+  ]
+ },
+ "visual_hints": {
+  "keywords": [
+   "科技感",
+   "暗底",
+   "电光高亮",
+   "参数徽章"
+  ],
+  "palette_family": "midnight_blue",
+  "imagery_keywords": [
+   "ai server rack",
+   "gpu card closeup",
+   "edge device industrial"
+  ]
+ },
+ "marketing_lexicon": {
+  "zh": [
+   "高能效推理",
+   "开箱即用",
+   "软硬一体"
+  ],
+  "en": [
+   "high-efficiency inference",
+   "plug-and-play",
+   "integrated stack"
+  ],
+  "ru": [
+   "эффективный inference",
+   "готовое решение",
+   "программно-аппаратный комплекс"
+  ]
+ },
+ "image_keywords": [
+  "ai inference server",
+  "gpu accelerator card",
+  "edge computing device"
+ ]
+}

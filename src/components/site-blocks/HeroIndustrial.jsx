@@ -1,0 +1,1 @@
+export { HeroIndustrial } from './blocks'

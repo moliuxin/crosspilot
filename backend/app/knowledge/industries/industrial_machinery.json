@@ -1,0 +1,155 @@
+{
+ "industry_id": "industrial_machinery",
+ "aliases": [
+  "工业机械",
+  "机械设备",
+  "机械",
+  "生产设备",
+  "生产线",
+  "数控",
+  "machinery",
+  "industrial equipment",
+  "CNC",
+  "machine tool",
+  "станок",
+  "станки",
+  "промышленное оборудование",
+  "оборудование"
+ ],
+ "summary": "B2B 长决策链、多人共创决策的资本设备类;网站职责是降低选型成本并把访客导入询价(RFQ)。",
+ "decision_model": "B2B 长链理性型 · 决策链含工程师/采购/管理层 · RFQ 询价制",
+ "avg_order_value": "high",
+ "buyer_roles": [
+  "plant engineer",
+  "procurement manager",
+  "production director"
+ ],
+ "buyer_pain_points": [
+  {
+   "id": "selection_complexity",
+   "severity": "high",
+   "pain": {
+    "ru": "Сложно подобрать модель: параметры непрозрачны",
+    "en": "Hard to pick a model: opaque specs",
+    "zh": "选型困难:参数不透明、配置组合复杂"
+   },
+   "site_answer": "规格参数表 + 选型维度对比 + 工程师咨询入口"
+  },
+  {
+   "id": "downtime_fear",
+   "severity": "high",
+   "pain": {
+    "ru": "Простой линии стоит дороже станка",
+    "en": "Downtime costs more than the machine",
+    "zh": "停机损失巨大,最怕售后响应慢"
+   },
+   "site_answer": "响应 SLA(24/48h)+ 备件库存 + 服务网点"
+  },
+  {
+   "id": "compliance_risk",
+   "severity": "high",
+   "pain": {
+    "ru": "Риски с ГОСТ / ТР ТС (EAC)",
+    "en": "GOST / EAC compliance risks",
+    "zh": "上马投产时的 ГОСТ/EAC 合规风险"
+   },
+   "site_answer": "证书墙 + 出厂检测报告可下载"
+  },
+  {
+   "id": "multi_stakeholder",
+   "severity": "mid",
+   "pain": {
+    "ru": "Решение согласуют несколько человек",
+    "en": "Several people co-decide",
+    "zh": "多人决策,需要能说服管理层的材料"
+   },
+   "site_answer": "可下载 КП PDF + ROI 测算表"
+  },
+  {
+   "id": "lead_time_opacity",
+   "severity": "mid",
+   "pain": {
+    "ru": "Непонятны сроки и порядок оплаты",
+    "en": "Unclear lead time and payment terms",
+    "zh": "交期与付款节奏不透明"
+   },
+   "site_answer": "明示 срок изготовления + 分阶段付款方案"
+  },
+  {
+   "id": "commissioning_training",
+   "severity": "mid",
+   "pain": {
+    "ru": "Кто будет монтировать и обучать",
+    "en": "Who installs and trains",
+    "zh": "安装调试与培训由谁负责"
+   },
+   "site_answer": "пусконаладка «под ключ» + 培训写入服务包"
+  }
+ ],
+ "trust_requirements": [
+  "ISO 9001",
+  "CE",
+  "ГОСТ / ТР ТС (EAC)",
+  "出厂检测报告"
+ ],
+ "content_priorities": [
+  "技术参数",
+  "应用工况",
+  "服务 SLA",
+  "认证",
+  "案例"
+ ],
+ "layout_hints": {
+  "layout_variant": "dense",
+  "grid": "3 列 · 4:3 图 · 信息密度优先",
+  "hero": "收紧 · 为参数表让位",
+  "sections_priority": [
+   "hero",
+   "key_specs",
+   "applications",
+   "products",
+   "cases",
+   "rfq"
+  ]
+ },
+ "visual_hints": {
+  "keywords": [
+   "硬朗",
+   "工程感",
+   "参数化",
+   "钢灰底色",
+   "安全色点缀"
+  ],
+  "palette_family": "steel_safety",
+  "imagery_keywords": [
+   "industrial machine workshop",
+   "cnc machine closeup",
+   "factory production line"
+  ]
+ },
+ "marketing_lexicon": {
+  "zh": [
+   "稳定可靠",
+   "连续工况",
+   "全球交付",
+   "快速服务"
+  ],
+  "en": [
+   "reliable operation",
+   "continuous duty",
+   "global delivery",
+   "fast service"
+  ],
+  "ru": [
+   "надёжная работа",
+   "непрерывный режим",
+   "глобальная поставка",
+   "быстрый сервис"
+  ]
+ },
+ "image_keywords": [
+  "industrial machinery factory",
+  "cnc machine tool",
+  "production line equipment"
+ ]
+}

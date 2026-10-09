@@ -1,0 +1,117 @@
+{
+ "industry_id": "photovoltaic",
+ "aliases": [
+  "光伏",
+  "光伏设备",
+  "太阳能",
+  "组件",
+  "逆变器",
+  "photovoltaic",
+  "solar",
+  "inverter",
+  "pv module",
+  "солнечные панели",
+  "фотоэлектрическое"
+ ],
+ "summary": "项目制 B2B 光伏设备/组件类;买家关心全生命周期发电量与认证,网站要给出可下载的电站级资料。",
+ "decision_model": "B2B 项目制 · 决策链含 EPC/投资方 · RFQ+方案询价",
+ "avg_order_value": "high",
+ "buyer_roles": [
+  "epc engineer",
+  "project investor",
+  "procurement manager"
+ ],
+ "buyer_pain_points": [
+  {
+   "id": "lifecycle_yield",
+   "severity": "high",
+   "pain": {
+    "ru": "Реальная генерация за срок службы",
+    "en": "Real lifetime yield",
+    "zh": "全生命周期实际发电量"
+   },
+   "site_answer": "发电量测算 + 衰减质保曲线"
+  },
+  {
+   "id": "certification",
+   "severity": "high",
+   "pain": {
+    "ru": "Сертификаты для рынка (EAC/CE/TÜV)",
+    "en": "Market certifications",
+    "zh": "目标市场认证"
+   },
+   "site_answer": "证书墙(IEC/TÜV/EAC)+ 可下载"
+  },
+  {
+   "id": "bankability",
+   "severity": "mid",
+   "pain": {
+    "ru": "Финансируемость бренда",
+    "en": "Bankability",
+    "zh": "品牌可融资性"
+   },
+   "site_answer": "第三方背书 + 大型项目案例"
+  }
+ ],
+ "trust_requirements": [
+  "IEC 61215",
+  "TÜV",
+  "CE",
+  "ГОСТ / EAC",
+  "ISO 9001"
+ ],
+ "content_priorities": [
+  "效率参数",
+  "质保条款",
+  "项目案例",
+  "认证"
+ ],
+ "layout_hints": {
+  "layout_variant": "dense",
+  "grid": "3 列 · 4:3 图",
+  "hero": "收紧",
+  "sections_priority": [
+   "hero",
+   "key_specs",
+   "products",
+   "cases",
+   "certifications",
+   "rfq"
+  ]
+ },
+ "visual_hints": {
+  "keywords": [
+   "清洁能源感",
+   "亮色",
+   "数据可视化"
+  ],
+  "palette_family": "solar_amber",
+  "imagery_keywords": [
+   "solar panel farm",
+   "inverter installation",
+   "pv project aerial"
+  ]
+ },
+ "marketing_lexicon": {
+  "zh": [
+   "高转换效率",
+   "长期质保",
+   "电站级交付"
+  ],
+  "en": [
+   "high efficiency",
+   "long-term warranty",
+   "utility-scale delivery"
+  ],
+  "ru": [
+   "высокий КПД",
+   "долгосрочная гарантия",
+   "реализация станций"
+  ]
+ },
+ "image_keywords": [
+  "solar photovoltaic panels",
+  "solar farm",
+  "pv inverter"
+ ]
+}

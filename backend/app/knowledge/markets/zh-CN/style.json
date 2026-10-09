@@ -1,0 +1,11 @@
+{
+ "density": "high",
+ "emphasis": {
+  "blocks": [
+   "factory",
+   "solutions"
+  ],
+  "treatment": "卡片顶部色条"
+ },
+ "notes": "中文区:制造能力与解决方案前置,信息密度高。"
+}

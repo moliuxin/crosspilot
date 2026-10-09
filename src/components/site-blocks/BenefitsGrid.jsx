@@ -1,0 +1,1 @@
+export { BenefitsGrid } from './blocks'

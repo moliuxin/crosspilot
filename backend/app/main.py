@@ -17,6 +17,7 @@ from .database import Base, SessionLocal, engine
 from .routers import (
     agent,
     ai as ai_router,
+    skills as skills_router,
     auth,
     brush,
     company,
@@ -278,6 +279,7 @@ for r in (
     seo.router,
     agent.router,
     ai_router.router,
+    skills_router.router,
 ):
     app.include_router(r, prefix=settings.api_prefix)
 

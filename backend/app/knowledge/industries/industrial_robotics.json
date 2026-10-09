@@ -1,0 +1,52 @@
+{
+  "industry_id": "industrial_robotics",
+  "aliases": ["协作机器人", "工业机器人", "机器人", "机械臂", "六轴机器人", "cobots", "collaborative robot", "industrial robot", "robotic arm", "кобот", "промышленный робот", "манипулятор"],
+  "summary": "B2B 长决策链的资本设备类;买家是系统集成商/自动化工程师,网站职责是证明负载精度与交付可靠并把访客导入 RFQ。",
+  "decision_model": "B2B 长链理性型 · 决策链含自动化工程师/采购/集成商 · RFQ 询价制",
+  "avg_order_value": "high",
+  "buyer_roles": ["automation engineer", "procurement manager", "system integrator"],
+  "buyer_pain_points": [
+    {
+      "id": "selection_complexity",
+      "severity": "high",
+      "pain": {"ru": "Сложно подобрать модель: нагрузка, вылет, повторяемость — параметры непрозрачны", "en": "Hard to pick a model: payload, reach, repeatability are opaque", "zh": "选型困难:负载/臂展/重复定位精度参数不透明"},
+      "site_answer": "规格参数表 + 选型对比 + 工程师 1v1 咨询入口"
+    },
+    {
+      "id": "integration_risk",
+      "severity": "high",
+      "pain": {"ru": "Риски интеграции с существующей линией и PLC", "en": "Integration risks with existing line and PLC", "zh": "与现有产线/PLC 集成的风险"},
+      "site_answer": "通信协议清单(Profinet/EtherCAT)+ 集成案例 + 现场调试服务说明"
+    },
+    {
+      "id": "compliance_risk",
+      "severity": "high",
+      "pain": {"ru": "Риски с ГОСТ / ТР ТС (EAC) при вводе в эксплуатацию", "en": "GOST / EAC compliance risks at commissioning", "zh": "投产时的 ГОСТ/EAC 合规风险"},
+      "site_answer": "证书墙(ГОСТ / ТР ТС / CE)+ 出厂检测报告可下载"
+    },
+    {
+      "id": "downtime_fear",
+      "severity": "high",
+      "pain": {"ru": "Простой линии стоит дороже самого робота — важна скорость сервиса", "en": "Downtime costs more than the robot — service speed is critical", "zh": "停机损失巨大,最怕售后响应慢"},
+      "site_answer": "响应 SLA(24/48h)+ 备件库存 + 全球服务网点"
+    },
+    {
+      "id": "lead_time_opacity",
+      "severity": "mid",
+      "pain": {"ru": "Непонятны сроки поставки и порядок оплаты", "en": "Unclear lead time and payment terms", "zh": "交期与付款节奏不透明"},
+      "site_answer": "明示 срок изготовления + 分阶段付款方案"
+    },
+    {
+      "id": "commissioning_training",
+      "severity": "mid",
+      "pain": {"ru": "Кто будет монтировать, отлаживать и обучать операторов", "en": "Who installs, commissions and trains operators", "zh": "安装调试与操作培训由谁负责"},
+      "site_answer": "пусконаладка «под ключ» + 操作培训写入服务包"
+    }
+  ],
+  "trust_requirements": ["ISO 9001", "CE", "ГОСТ / ТР ТС (EAC)", "CR 认证", "出厂检测报告", "集成案例"],
+  "content_priorities": ["负载/臂展/重复定位精度", "通信协议兼容性", "安全功能(协作等级)", "集成案例", "服务 SLA"],
+  "layout_hints": {"layout_variant": "dense", "grid": "3 列 · 4:3 图 · 设备卡信息密度优先", "hero": "收紧 · 为参数表让位", "sections_priority": ["hero", "key_specs", "applications", "products", "cases", "rfq"]},
+  "visual_hints": {"keywords": ["硬朗", "工程感", "参数化", "钢灰底色", "安全色点缀"], "palette_family": "steel_safety", "imagery_keywords": ["robot arm in factory", "automation cell", "engineer with cobot", "precision assembly"]},
+  "marketing_lexicon": {"zh": ["稳定可靠", "精准重复定位", "快速部署", "柔性产线", "整套交付"], "en": ["precision repeatability", "fast deployment", "flexible production", "turnkey delivery"], "ru": ["точное позиционирование", "быстрый запуск", "гибкая линия", "поставка под ключ"]},
+  "image_keywords": ["collaborative robot arm", "industrial automation cell", "robot assembly line", "engineer programming cobot"]
+}

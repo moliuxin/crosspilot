@@ -1,0 +1,19 @@
+{
+ "primary": [
+  "Request a quote",
+  "Get a quote",
+  "Request a proposal"
+ ],
+ "secondary": [
+  "Talk to an engineer",
+  "Download catalog",
+  "Request samples",
+  "Request specs"
+ ],
+ "forbidden": [
+  "Buy Now",
+  "Add to Cart",
+  "Checkout",
+  "Limited-time deal"
+ ]
+}

@@ -1,0 +1,115 @@
+{
+ "industry_id": "electronics",
+ "aliases": [
+  "电子",
+  "电子产品",
+  "电子元器件",
+  "PCB",
+  "传感器",
+  "electronics",
+  "electronic components",
+  "pcb",
+  "sensor",
+  "электроника",
+  "компоненты"
+ ],
+ "summary": "参数驱动的 B2B 电子元器件/设备类;买家按规格筛选,网站要把规格表做到极致并支持快速索样。",
+ "decision_model": "B2B 规格筛选型 · 决策链含硬件工程师/采购 · 索样+RFQ",
+ "avg_order_value": "mid",
+ "buyer_roles": [
+  "hardware engineer",
+  "procurement manager"
+ ],
+ "buyer_pain_points": [
+  {
+   "id": "spec_fatigue",
+   "severity": "high",
+   "pain": {
+    "ru": "Усталость сравнивать характеристики",
+    "en": "Fatigue comparing specs",
+    "zh": "参数对比疲劳"
+   },
+   "site_answer": "参数对比表 + 选型器 + 数据手册下载"
+  },
+  {
+   "id": "sample_cycle",
+   "severity": "high",
+   "pain": {
+    "ru": "Долгий цикл получения образцов",
+    "en": "Long sample cycle",
+    "zh": "索样周期长"
+   },
+   "site_answer": "明示样品交期 + 在线索样入口"
+  },
+  {
+   "id": "quality_consistency",
+   "severity": "mid",
+   "pain": {
+    "ru": "Стабильность качества партий",
+    "en": "Batch quality consistency",
+    "zh": "批次质量一致性"
+   },
+   "site_answer": "QC 流程 + 一致性检测报告"
+  }
+ ],
+ "trust_requirements": [
+  "ISO 9001",
+  "IATF 16949",
+  "RoHS",
+  "REACH",
+  "CE"
+ ],
+ "content_priorities": [
+  "规格表",
+  "数据手册",
+  "索样",
+  "批量交期"
+ ],
+ "layout_hints": {
+  "layout_variant": "compact",
+  "grid": "4 列 · 1:1 图 · 卡片信息紧凑",
+  "hero": "半沉浸",
+  "sections_priority": [
+   "hero",
+   "products",
+   "key_specs",
+   "faq",
+   "fast_quote"
+  ]
+ },
+ "visual_hints": {
+  "keywords": [
+   "克制",
+   "工程感",
+   "规格优先"
+  ],
+  "palette_family": "graphite_violet",
+  "imagery_keywords": [
+   "electronic component macro",
+   "pcb assembly line",
+   "sensor device"
+  ]
+ },
+ "marketing_lexicon": {
+  "zh": [
+   "原厂直销",
+   "规格齐全",
+   "快速索样"
+  ],
+  "en": [
+   "factory direct",
+   "full spec range",
+   "fast sampling"
+  ],
+  "ru": [
+   "напрямую с завода",
+   "полная спецификация",
+   "быстрые образцы"
+  ]
+ },
+ "image_keywords": [
+  "electronic components",
+  "pcb circuit board",
+  "industrial sensor"
+ ]
+}

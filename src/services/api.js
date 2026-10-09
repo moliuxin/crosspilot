@@ -647,8 +647,34 @@ export const api = {
   },
 
   async getSkills() {
+    // PHASE 1:优先读后端 Skill Engine 真源;后端不可用时回落本地静态目录
+    const { ok, data } = await http('GET', '/skills')
+    if (ok && Array.isArray(data?.skills) && data.skills.length) {
+      return data.skills.map((s) => ({
+        id: s.id,
+        name: s.name,
+        type: 'SKILL·REAL',
+        desc: s.description,
+        price: s.credits > 0 ? `${s.credits} Credits / 次` : 'Free',
+        version: s.version,
+        real: true,
+      }))
+    }
     await delay()
     return skills
+  },
+
+  async getSkillRuns(limit = 20) {
+    const { ok, data } = await http('GET', `/skills/runs?limit=${limit}`)
+    return ok ? data.runs || [] : []
+  },
+
+  async runSkill(skillId, input, { siteId = '', market = '' } = {}) {
+    const { ok, data, error } = await http('POST', `/skills/${encodeURIComponent(skillId)}/run`, {
+      input: input || {}, site_id: siteId, market,
+    })
+    if (!ok) throw error
+    return data
   },
 
   /* ---------------- Agent ---------------- */

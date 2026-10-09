@@ -1,0 +1,11 @@
+{
+ "density": "high",
+ "emphasis": {
+  "blocks": [
+   "services",
+   "key_specs"
+  ],
+  "treatment": "card-top-accent-line"
+ },
+ "notes": "俄区:参数与服务直给(务实),价格参数前置。"
+}
