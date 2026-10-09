@@ -78,6 +78,8 @@ function Routed() {
   return (
     <Routes>
       <Route path="/login" element={<Navigate to="/" replace />} />
+      {/* 地球首页：登录后仍可访问（Topbar「回到首页」指向这里） */}
+      <Route path="/intro" element={<GlobeIntro />} />
       <Route path="/onboarding" element={<Onboarding />} />
       <Route path="/templates/:slug" element={<TemplatePreview />} />
       <Route path="/" element={<AppLayout />}>
