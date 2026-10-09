@@ -10,10 +10,11 @@ import { inquiryStats } from '../data/mockInquiries'
 import { marketTemplates } from '../data/marketTemplates'
 import { skills } from '../data/skills'
 import { loadDb, saveDb, uid } from './db'
+import { apiBasePath, apiUrl } from '../config/paths'
 
-// VITE_API_BASE 去掉末尾斜杠：设为 "/" 时空串（同源相对路径，配合 nginx 反代 /api）
-export const API_BASE = (import.meta.env.VITE_API_BASE || 'http://127.0.0.1:8000').replace(/\/+$/, '')
-const API_PREFIX = '/api'
+// API 基址已统一由 src/config/paths.js 管理（APP_BASE_PATH / API_BASE_PATH 派生）。
+// 保留旧导出名做兼容；新代码请使用 apiUrl(path)，勿手工拼接。
+export const API_BASE = apiBasePath()
 const TIMEOUT = 8000
 
 const TOKEN_KEY = 'sitepilot.token'
@@ -78,7 +79,7 @@ export async function detectBackend() {
     const ctrl = new AbortController()
     const timer = setTimeout(() => ctrl.abort(), 2500)
     const token = getToken()
-    const res = await fetch(`${API_BASE}${API_PREFIX}/health`, {
+    const res = await fetch(apiUrl('health'), {
       headers: token ? { Authorization: `Bearer ${token}` } : {},
       signal: ctrl.signal,
     })
@@ -113,7 +114,7 @@ async function http(method, path, body, extraHeaders) {
   const timer = setTimeout(() => ctrl.abort(), TIMEOUT)
   try {
     const token = getToken()
-    const res = await fetch(`${API_BASE}${API_PREFIX}${path}`, {
+    const res = await fetch(apiUrl(path), {
       method,
       headers: {
         'Content-Type': 'application/json',

@@ -237,6 +237,10 @@ def _migrate_multi_site(db) -> None:
 app = FastAPI(
     title=settings.app_name,
     version="1.0.0",
+    # 文档与 openapi 跟随部署前缀（子路径部署时经同一 Nginx location 即可访问）
+    docs_url=f"{settings.api_prefix}/docs",
+    redoc_url=f"{settings.api_prefix}/redoc",
+    openapi_url=f"{settings.api_prefix}/openapi.json",
     description=(
         "AI 外贸独立站智能体后端。提供产品/询盘/站点/SEO/Agent 全套接口，"
         "AI 能力支持 mock 与真实 LLM 双 provider。"
@@ -279,6 +283,20 @@ def root():
     return {
         "name": settings.app_name,
         "version": "1.0.0",
-        "docs": "/docs",
+        "docs": f"{settings.api_prefix}/docs",
         "api_prefix": settings.api_prefix,
+        "app_base": settings.app_base,
     }
+
+
+@app.get("/healthz", include_in_schema=False)
+def healthz():
+    """容器编排健康探针：与部署前缀无关的固定路径（compose healthcheck 用）。"""
+    return {"ok": True}
+
+
+if settings.app_base != "/":
+    @app.get(settings.app_base, include_in_schema=True, tags=["meta"])
+    def base_meta():
+        """应用子路径上的 meta（与 / 同内容，子路径部署时的入口自检）。"""
+        return root()

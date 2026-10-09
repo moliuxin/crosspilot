@@ -1,0 +1,64 @@
+# CrossPilot 前端 nginx（模板：容器启动时由 envsubst 注入部署路径变量）
+#
+# 变量（由 /docker-entrypoint.d/15-base-path.sh 规范化）：
+#   ${APP_BASE_PATH}            应用目录前缀，如 /crosspilot/（根部署为 /）
+#   ${APP_BASE_PATH_NO_SLASH}   无尾斜杠形式，如 /crosspilot（根部署为哨兵路径）
+#   ${API_BASE_PATH}            API 前缀（带尾斜杠），如 /crosspilot/api/
+#
+# 转发约定：外部统一 Nginx【不剥离】子路径前缀 —— 本容器收到完整路径。
+
+# WebSocket 升级（项目当前无 WS 端点，预留：协议由页面 http/https 决定）
+map $http_upgrade $connection_upgrade {
+    default upgrade;
+    ''      close;
+}
+
+# 带内容指纹的构建产物长缓存，其余短缓存
+map $uri $asset_cache_control {
+    ~-[A-Za-z0-9_-]{8,}\.(js|css)$  "public, max-age=31536000, immutable";
+    default                         "public, max-age=300";
+}
+
+server {
+    listen 80;
+    server_name _;
+    root /usr/share/nginx/html;
+
+    # 产品 Excel 批量导入走 base64 上传
+    client_max_body_size 25m;
+
+    gzip on;
+    gzip_comp_level 5;
+    gzip_min_length 1024;
+    gzip_types text/css application/javascript application/json image/svg+xml image/webp;
+
+    # /crosspilot → /crosspilot/ 补尾斜杠（根部署时该 location 指向哨兵路径，无副作用）
+    location = ${APP_BASE_PATH_NO_SLASH} {
+        return 301 ${APP_BASE_PATH}$is_args$args;
+    }
+
+    # API（Swagger 文档与 openapi.json 也跟随 API_BASE_PATH）
+    # proxy_pass 不带 URI → 保留完整路径转发；后端按同一 SITEPILOT_*_BASE_PATH 挂载
+    location ${API_BASE_PATH} {
+        proxy_pass http://api:8000;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        # WebSocket 预留
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection $connection_upgrade;
+        # AI 生成 / 真实 LLM 调用可能较慢
+        proxy_read_timeout 300s;
+        proxy_send_timeout 300s;
+    }
+
+    # 前端静态资源 + 入口兜底（直达/刷新任意前端路径不 404；HashRouter 接管路由）
+    location ${APP_BASE_PATH} {
+        alias /usr/share/nginx/html/;
+        index index.html;
+        try_files $uri $uri/ ${APP_BASE_PATH}index.html;
+        add_header Cache-Control $asset_cache_control;
+    }
+}

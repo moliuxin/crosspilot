@@ -390,9 +390,12 @@ bulkSampleText()         // 生成可粘贴的示例清单
 | --- | --- | --- |
 | `SITEPILOT_DATABASE_URL` | `sqlite:///backend/sitepilot.db` | 数据库（生产可换 Postgres） |
 | `SITEPILOT_CORS_ORIGINS` | `*` | 允许跨域来源（逗号分隔） |
+| `SITEPILOT_APP_BASE_PATH` | `/` | 部署子路径（如 `/crosspilot/`，外部 Nginx 不剥离前缀） |
+| `SITEPILOT_API_BASE_PATH` | 派生 | API 路由前缀；留空 = `${SITEPILOT_APP_BASE_PATH}api` |
 | `SITEPILOT_FREE_GENERATION_LIMIT` | `1` | 免费完整生成次数 |
 | `SITEPILOT_LLM_PROVIDER` | `mock` | `mock` / `openai` |
-| `VITE_API_BASE` | `http://127.0.0.1:8000` | 前端指向的后端地址 |
+| `VITE_API_BASE` | 开发默认 `http://127.0.0.1:8000` | 前端指向的后端完整地址（构建时注入） |
+| `VITE_API_BASE_PATH` | 派生 | 同源 API 前缀；仅当 API 不挂在应用路径下时需构建时注入（见 `src/config/paths.js`） |
 
 ---
 

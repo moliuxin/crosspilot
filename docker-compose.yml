@@ -29,6 +29,9 @@ services:
       dockerfile: Dockerfile
     restart: unless-stopped
     environment:
+      # ── 部署子路径（外部统一 Nginx 不剥离前缀；默认根路径部署）──
+      SITEPILOT_APP_BASE_PATH: ${APP_BASE_PATH:-/}
+      SITEPILOT_API_BASE_PATH: ${API_BASE_PATH:-}
       # 数据库：Postgres（首次启动自动建表 + 播种演示数据）
       SITEPILOT_DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-crosspilot}:${POSTGRES_PASSWORD:-crosspilot}@db:5432/${POSTGRES_DB:-crosspilot}
       # 会话密钥：生产必须通过 .env 覆盖
@@ -47,7 +50,8 @@ services:
       db:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/health', timeout=5)"]
+      # /healthz 与部署前缀无关，改 APP_BASE_PATH 无需同步改这里
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/healthz', timeout=5)"]
       interval: 10s
       timeout: 5s
       retries: 12
@@ -57,16 +61,19 @@ services:
     build:
       context: .
       dockerfile: docker/web/Dockerfile
-      args:
-        VITE_API_BASE: /   # 同源相对路径，nginx 反代 /api
     restart: unless-stopped
+    environment:
+      # ── 部署子路径（nginx 模板经 envsubst 运行时注入，改配置重启即生效）──
+      APP_BASE_PATH: ${APP_BASE_PATH:-/}
+      API_BASE_PATH: ${API_BASE_PATH:-}
     ports:
       - "${WEB_PORT:-8080}:80"
     depends_on:
       api:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "wget", "-qO", "/dev/null", "http://127.0.0.1/"]
+      # 探测应用入口（$${} 转义 compose 插值，运行时取容器内环境变量）
+      test: ["CMD-SHELL", "wget -qO /dev/null \"http://127.0.0.1$${APP_BASE_PATH}\" || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 6

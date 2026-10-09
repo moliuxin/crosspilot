@@ -10,11 +10,27 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 
+def normalize_base_path(p: str) -> str:
+    """规范化部署子路径：过滤空段、确保前导 /、去尾斜杠；空值 → '/'。
+
+    >>> normalize_base_path("") == "/"
+    >>> normalize_base_path("crosspilot") == "/crosspilot"
+    >>> normalize_base_path("/crosspilot//") == "/crosspilot"
+    """
+    segs = [seg for seg in (p or "").split("/") if seg]
+    return "/" + "/".join(segs) if segs else "/"
+
+
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="SITEPILOT_", env_file=".env", extra="ignore")
 
     app_name: str = "WorkBuddy SitePilot API"
-    api_prefix: str = "/api"
+
+    # 部署子路径（外部统一 Nginx 不剥离前缀时使用）：
+    #   SITEPILOT_APP_BASE_PATH=/crosspilot/ → 应用挂在 /crosspilot 下
+    app_base_path: str = "/"
+    # 浏览器侧 API 前缀；留空 = 从 app_base_path 派生（/ → /api，/crosspilot → /crosspilot/api）
+    api_base_path: str = ""
 
     # 数据库：默认 SQLite（校赛零依赖）；生产改 postgresql+psycopg://...
     database_url: str = f"sqlite:///{BASE_DIR / 'sitepilot.db'}"
@@ -44,6 +60,19 @@ class Settings(BaseSettings):
 
     # 注册开关：演示环境允许自助注册；生产可关闭改为邀请制
     allow_signup: bool = True
+
+    @property
+    def app_base(self) -> str:
+        """规范化后的应用子路径（无尾斜杠）：'/' 或 '/crosspilot'。"""
+        return normalize_base_path(self.app_base_path)
+
+    @property
+    def api_prefix(self) -> str:
+        """路由挂载前缀（无尾斜杠）。默认从部署子路径派生，可被 api_base_path 覆盖。"""
+        if self.api_base_path:
+            return normalize_base_path(self.api_base_path)
+        base = self.app_base
+        return f"{base}/api" if base != "/" else "/api"
 
     @property
     def cors_list(self) -> list[str]:
