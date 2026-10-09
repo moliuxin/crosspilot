@@ -1,202 +1,254 @@
-.auth-page {
-  min-height: 100vh;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+/* 登录/注册页 —— CrossPilot 公共视觉系统(与 /intro 同源,基于 public-theme tokens) */
+
+/* 顶栏 */
+.cp-login-top {
+  position: relative;
+  z-index: 5;
+  display: flex;
   align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 26px 44px;
+}
+.cp-login-nav { display: flex; gap: 12px; }
+
+/* 主区:左品牌 55% / 右卡片 45% */
+.cp-login-main {
+  position: relative;
+  z-index: 5;
+  display: grid;
+  grid-template-columns: 55fr 45fr;
   gap: 48px;
-  padding: 48px;
-  background: radial-gradient(1200px 600px at 15% 10%, #eef4ff 0%, transparent 55%),
-    radial-gradient(900px 500px at 85% 90%, #f0fbf6 0%, transparent 55%), #f7f9fc;
+  align-items: center;
+  max-width: 1220px;
+  margin: 0 auto;
+  padding: 4vh 44px 48px;
+  min-height: calc(100vh - 200px);
+  animation: cp-login-in 0.4s ease;
+}
+@keyframes cp-login-in {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: none; }
 }
 
-.auth-card {
-  width: 100%;
-  max-width: 420px;
-  justify-self: center;
-  background: #fff;
-  border: 1px solid #e6ebf2;
-  border-radius: 16px;
-  padding: 32px;
-  box-shadow: 0 18px 48px rgba(18, 38, 74, 0.08);
-}
-
-.auth-brand {
-  display: flex;
-  align-items: baseline;
-  gap: 10px;
-  margin-bottom: 24px;
-}
-
-.auth-logo {
-  font-size: 22px;
+/* ---------- 左侧 ---------- */
+.cp-login-left { max-width: 560px; }
+.cp-login-eyebrow {
+  font-family: var(--cp-font-mono);
+  font-size: 11px;
+  letter-spacing: 0.3em;
   font-weight: 700;
-  letter-spacing: -0.01em;
-  color: #12264a;
+  color: #f0abfc;
+  text-shadow: 0 0 10px rgba(232, 121, 249, 0.5);
+  margin: 0 0 16px;
 }
-
-.auth-tagline {
-  font-size: 13px;
-  color: #7a879c;
+.cp-login-title {
+  font-size: clamp(34px, 4.6vw, 56px);
+  line-height: 1.14;
+  margin: 0 0 18px;
+  background: linear-gradient(92deg, #f2fbff 30%, #7df3ff 68%, #f0abfc 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
 }
+.cp-login-sub { font-size: 14.5px; color: var(--cp-text-dim); margin: 0 0 34px; letter-spacing: 0.02em; }
 
-.auth-warn {
-  margin-bottom: 16px;
-  padding: 10px 12px;
-  border-radius: 10px;
-  background: #fff7e6;
-  border: 1px solid #ffe1a8;
-  color: #8a5a00;
-  font-size: 13px;
-  line-height: 1.5;
-}
-
-.auth-tabs {
-  display: flex;
-  gap: 6px;
-  padding: 4px;
-  background: #f1f4f9;
-  border-radius: 10px;
-  margin-bottom: 22px;
-}
-
-.auth-tab {
-  flex: 1;
-  padding: 9px 12px;
-  border: 0;
-  border-radius: 8px;
-  background: transparent;
-  color: #5a6980;
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.15s;
-}
-
-.auth-tab.on {
-  background: #fff;
-  color: #12264a;
-  box-shadow: 0 2px 8px rgba(18, 38, 74, 0.08);
-}
-
-.auth-form {
-  display: flex;
-  flex-direction: column;
+.cp-login-caps {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 40px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 14px;
+  max-width: 480px;
+}
+.cp-login-caps li {
+  border: 1px solid rgba(34, 211, 238, 0.2);
+  background: linear-gradient(180deg, rgba(9, 20, 40, 0.7), rgba(7, 14, 30, 0.8));
+  border-radius: 6px;
+  padding: 15px 18px;
+  clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px);
+  transition: transform 0.16s ease, border-color 0.16s ease, box-shadow 0.16s ease;
+}
+.cp-login-caps li:hover {
+  transform: translateY(-3px);
+  border-color: rgba(34, 211, 238, 0.5);
+  box-shadow: 0 8px 28px rgba(34, 211, 238, 0.14);
+}
+.cp-login-caps b {
+  display: block;
+  font-size: 16px;
+  color: #e8f6ff;
+  margin-bottom: 4px;
+}
+.cp-login-caps span {
+  font-family: var(--cp-font-mono);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  color: var(--cp-text-faint);
 }
 
-.auth-field {
+.cp-login-bottom {
+  font-family: var(--cp-font-mono);
+  font-size: 11px;
+  letter-spacing: 0.26em;
+  color: var(--cp-text-faint);
+  margin: 0;
+}
+
+/* ---------- 右侧:玻璃拟态 Auth 卡片 ---------- */
+.cp-auth-card {
+  position: relative;
+  width: min(430px, 100%);
+  padding: 30px 30px 24px;
+  border-radius: 10px;
+  background: var(--cp-glass);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--cp-glass-border);
+  box-shadow:
+    0 0 34px rgba(34, 211, 238, 0.14),
+    0 0 70px rgba(139, 92, 246, 0.10),
+    0 26px 60px rgba(0, 0, 0, 0.5);
+  clip-path: polygon(16px 0, 100% 0, 100% calc(100% - 16px), calc(100% - 16px) 100%, 0 100%, 0 16px);
+  justify-self: end;
+}
+.cp-auth-brand { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; }
+.cp-auth-brand .cp-mark {
+  width: 38px; height: 38px; border-radius: 10px;
+  display: grid; place-items: center;
+  font-size: 19px; font-weight: 800; color: #04101c;
+  background: linear-gradient(135deg, var(--cp-cyan), var(--cp-magenta));
+  box-shadow: 0 0 16px rgba(34, 211, 238, 0.5);
+}
+.cp-auth-brand strong { display: block; font-size: 16px; color: #e8f6ff; }
+.cp-auth-brand span { display: block; font-size: 11.5px; color: var(--cp-text-dim); margin-top: 2px; }
+
+/* offline:橙色状态点,非黄色警告框 */
+.cp-auth-offline {
   display: flex;
-  flex-direction: column;
-  gap: 6px;
-  font-size: 13px;
-  color: #5a6980;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: #c9a27a;
+  background: rgba(251, 146, 60, 0.08);
+  border: 1px solid rgba(251, 146, 60, 0.3);
+  border-radius: 5px;
+  padding: 10px 13px;
+  margin-bottom: 16px;
+}
+.cp-auth-offline .cp-dot { margin-right: 2px; }
+.cp-auth-offline button {
+  background: none;
+  border: none;
+  color: #7df3ff;
+  cursor: pointer;
+  font-size: 12.5px;
+  padding: 0;
+  text-decoration: underline;
 }
 
-.auth-field input {
-  height: 40px;
-  padding: 0 12px;
-  border: 1px solid #d9e0eb;
-  border-radius: 9px;
+.cp-auth-tabs { display: flex; gap: 8px; margin-bottom: 16px; }
+.cp-auth-tabs button {
+  flex: 1;
+  background: rgba(8, 20, 40, 0.7);
+  border: 1px solid rgba(34, 211, 238, 0.25);
+  color: var(--cp-text-dim);
+  border-radius: 4px;
+  padding: 10px 0;
+  font-size: 13.5px;
+  cursor: pointer;
+  transition: 0.15s;
+}
+.cp-auth-tabs button:hover { border-color: rgba(34, 211, 238, 0.5); color: #a5f3fc; }
+.cp-auth-tabs button.on {
+  color: #03121a;
+  background: linear-gradient(92deg, var(--cp-cyan), var(--cp-blue) 60%, var(--cp-purple));
+  border-color: transparent;
+  font-weight: 700;
+}
+
+.cp-auth-form { display: flex; flex-direction: column; gap: 12px; }
+.cp-auth-form label { display: flex; flex-direction: column; gap: 6px; }
+.cp-auth-form label > span {
+  font-size: 11.5px;
+  color: var(--cp-text-dim);
+  letter-spacing: 0.06em;
+}
+.cp-auth-form input {
+  background: rgba(5, 13, 28, 0.9);
+  border: 1px solid rgba(148, 163, 199, 0.25);
+  border-radius: 5px;
+  padding: 12px 13px;
   font-size: 14px;
-  color: #12264a;
-  background: #fff;
+  color: #e8f6ff;
   outline: none;
   transition: border-color 0.15s, box-shadow 0.15s;
 }
-
-.auth-field input:focus {
-  border-color: #3b7dff;
-  box-shadow: 0 0 0 3px rgba(59, 125, 255, 0.12);
+.cp-auth-form input::placeholder { color: #4a5f80; }
+.cp-auth-form input:focus {
+  border-color: rgba(34, 211, 238, 0.8);
+  box-shadow: 0 0 0 3px rgba(34, 211, 238, 0.18), 0 0 18px rgba(34, 211, 238, 0.15);
 }
 
-.auth-error {
-  padding: 9px 12px;
-  border-radius: 9px;
-  background: #fff1f0;
-  border: 1px solid #ffccc7;
-  color: #b42318;
-  font-size: 13px;
-}
-
-.auth-submit {
-  margin-top: 4px;
-  height: 42px;
-  border: 0;
-  border-radius: 9px;
-  background: #3b7dff;
-  color: #fff;
-  font-size: 15px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background 0.15s;
-}
-
-.auth-submit:hover:not(:disabled) {
-  background: #2a68e0;
-}
-
-.auth-submit:disabled {
-  opacity: 0.55;
-  cursor: not-allowed;
-}
-
-.auth-foot {
-  margin-top: 20px;
-  padding-top: 16px;
-  border-top: 1px solid #eef1f6;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
+/* 错误:红色霓虹边 */
+.cp-auth-error {
   font-size: 12.5px;
-  color: #8a97aa;
   line-height: 1.6;
+  color: #fda4af;
+  background: rgba(248, 113, 113, 0.08);
+  border: 1px solid rgba(248, 113, 113, 0.45);
+  border-radius: 5px;
+  padding: 10px 13px;
+  box-shadow: 0 0 14px rgba(248, 113, 113, 0.12), inset 0 0 10px rgba(248, 113, 113, 0.05);
 }
 
-.auth-demo {
-  align-self: flex-start;
-  border: 1px solid #d9e0eb;
-  border-radius: 7px;
-  background: #fff;
-  padding: 6px 12px;
-  font-size: 12.5px;
-  color: #3b7dff;
-  cursor: pointer;
-}
+.cp-auth-submit { width: 100%; margin-top: 4px; padding: 13px 24px; font-size: 14.5px; }
 
-.auth-demo:hover {
-  background: #f4f8ff;
-}
-
-.auth-side {
-  max-width: 420px;
-  justify-self: center;
-}
-
-.auth-side h2 {
-  font-size: 26px;
-  line-height: 1.35;
-  color: #12264a;
-  margin: 0 0 18px;
-  letter-spacing: -0.01em;
-}
-
-.auth-side ul {
-  margin: 0;
-  padding-left: 20px;
+.cp-auth-foot {
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  color: #5a6980;
-  font-size: 14px;
-  line-height: 1.65;
+  gap: 6px;
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px dashed rgba(148, 163, 199, 0.2);
+}
+.cp-auth-foot > span { font-size: 11px; color: var(--cp-text-faint); line-height: 1.7; }
+.cp-auth-demo {
+  align-self: flex-start;
+  background: none;
+  border: none;
+  color: #67e8f9;
+  font-size: 12px;
+  cursor: pointer;
+  letter-spacing: 0.04em;
+  padding: 0;
+}
+.cp-auth-demo:hover { text-decoration: underline; }
+
+/* ---------- 响应式 ---------- */
+/* 768–1100:左 40 / 右 60 */
+@media (max-width: 1100px) {
+  .cp-login-main { grid-template-columns: 40fr 60fr; gap: 28px; }
+  .cp-login-title { font-size: clamp(28px, 4vw, 40px); }
 }
 
-@media (max-width: 900px) {
-  .auth-page {
+/* <768:隐藏复杂左视觉,保留 Logo + 一句定位 + 卡片 */
+@media (max-width: 768px) {
+  .cp-login-top { padding: 18px 20px; }
+  .cp-login-nav .cp-btn { padding: 9px 14px; font-size: 12.5px; }
+  .cp-login-main {
     grid-template-columns: 1fr;
-    padding: 24px;
+    gap: 22px;
+    padding: 2vh 20px 40px;
+    min-height: auto;
   }
-  .auth-side {
-    display: none;
-  }
+  .cp-login-left { max-width: 100%; }
+  .cp-login-title { font-size: 27px; margin-bottom: 10px; }
+  .cp-login-sub { margin-bottom: 16px; }
+  .cp-login-caps,
+  .cp-login-bottom { display: none; }
+  .cp-auth-card { justify-self: stretch; width: 100%; }
 }

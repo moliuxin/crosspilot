@@ -152,6 +152,10 @@ def seed_if_empty(db: Session) -> bool:
 
     for p in PRODUCTS:
         db.add(models.Product(**p))
+    # Postgres 强制外键（inquiries.product_id → products.id）：两表无 ORM 级依赖时
+    # SQLAlchemy 按表名字母序刷库，inquiries 会先于 products 执行而违反外键。
+    # 先 flush 让产品落库，再挂询盘。
+    db.flush()
     for i in INQUIRIES:
         db.add(models.Inquiry(**i))
 

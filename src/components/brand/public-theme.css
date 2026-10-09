@@ -1,0 +1,223 @@
+/* ============================================================
+   CrossPilot 公共品牌视觉系统(公开页面共享 Design Tokens)
+   /intro 地球首页与 /login 登录页共用,避免两套颜色各自为政。
+   ============================================================ */
+
+:root {
+  --cp-bg: #030817;                    /* 深黑蓝底 */
+  --cp-cyan: #22d3ee;                  /* 主光色 青 */
+  --cp-blue: #3b82f6;
+  --cp-purple: #8b5cf6;
+  --cp-magenta: #e879f9;
+  --cp-text: #d7e4ff;
+  --cp-text-dim: #8fa3c8;
+  --cp-text-faint: #5a7297;
+  --cp-glass: rgba(6, 16, 32, 0.72);   /* 玻璃拟态底 */
+  --cp-glass-border: rgba(103, 232, 249, 0.25);
+  --cp-font-mono: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+}
+
+/* ---------- 公共页面骨架:深色科技背景(星点/网格/极光/地球剪影) ---------- */
+.cp-shell {
+  position: relative;
+  min-height: 100vh;
+  overflow-x: hidden;
+  background:
+    radial-gradient(1000px 700px at 72% 24%, rgba(34, 211, 238, 0.09), transparent 62%),
+    radial-gradient(900px 620px at 22% 82%, rgba(139, 92, 246, 0.08), transparent 60%),
+    radial-gradient(760px 520px at 50% 108%, rgba(232, 121, 249, 0.06), transparent 65%),
+    var(--cp-bg);
+  color: var(--cp-text);
+}
+
+/* 星点层(纯 CSS,不与首页 canvas 争性能) */
+.cp-shell::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    radial-gradient(1.2px 1.2px at 12% 18%, rgba(190, 215, 255, 0.7) 50%, transparent 51%),
+    radial-gradient(1px 1px at 28% 64%, rgba(190, 215, 255, 0.5) 50%, transparent 51%),
+    radial-gradient(1.4px 1.4px at 44% 32%, rgba(125, 243, 255, 0.55) 50%, transparent 51%),
+    radial-gradient(1px 1px at 61% 74%, rgba(190, 215, 255, 0.45) 50%, transparent 51%),
+    radial-gradient(1.2px 1.2px at 76% 22%, rgba(240, 171, 252, 0.5) 50%, transparent 51%),
+    radial-gradient(1px 1px at 88% 56%, rgba(190, 215, 255, 0.6) 50%, transparent 51%),
+    radial-gradient(1.3px 1.3px at 8% 78%, rgba(190, 215, 255, 0.4) 50%, transparent 51%),
+    radial-gradient(1px 1px at 52% 8%, rgba(125, 243, 255, 0.45) 50%, transparent 51%),
+    radial-gradient(1px 1px at 95% 84%, rgba(190, 215, 255, 0.5) 50%, transparent 51%);
+  animation: cp-twinkle 6s ease-in-out infinite alternate;
+}
+@keyframes cp-twinkle {
+  from { opacity: 0.55; }
+  to { opacity: 1; }
+}
+
+/* 深色科技网格层 */
+.cp-shell::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    linear-gradient(rgba(34, 211, 238, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(34, 211, 238, 0.04) 1px, transparent 1px);
+  background-size: 56px 56px;
+  -webkit-mask-image: radial-gradient(ellipse 90% 80% at 50% 40%, rgba(0, 0, 0, 0.9), transparent 75%);
+  mask-image: radial-gradient(ellipse 90% 80% at 50% 40%, rgba(0, 0, 0, 0.9), transparent 75%);
+}
+
+/* 地球剪影(纯 CSS:径向渐变球 + 青色边缘光),轻量不与首页 canvas 冲突 */
+.cp-globe-silhouette {
+  position: absolute;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 34% 30%, rgba(34, 211, 238, 0.22), rgba(8, 18, 40, 0.85) 58%, rgba(4, 9, 22, 0.95) 100%);
+  box-shadow:
+    0 0 70px rgba(34, 211, 238, 0.18),
+    0 0 140px rgba(139, 92, 246, 0.12),
+    inset -18px -14px 60px rgba(3, 8, 23, 0.9),
+    inset 0 0 34px rgba(34, 211, 238, 0.1);
+  border: 1px solid rgba(34, 211, 238, 0.22);
+  pointer-events: none;
+}
+.cp-globe-silhouette::before {
+  content: '';
+  position: absolute;
+  inset: 12%;
+  border-radius: 50%;
+  border: 1px dashed rgba(103, 232, 249, 0.16);
+}
+.cp-globe-silhouette::after {
+  content: '';
+  position: absolute;
+  left: -14%;
+  right: -14%;
+  top: 50%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(103, 232, 249, 0.35), transparent);
+}
+
+/* 很轻的扫描线 */
+.cp-scan {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.02) 0px,
+    rgba(255, 255, 255, 0.02) 1px,
+    transparent 1px,
+    transparent 3px
+  );
+}
+
+/* ---------- 公共品牌组件 ---------- */
+.cp-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.cp-brand .cp-mark {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+  font-size: 20px;
+  font-weight: 800;
+  color: #04101c;
+  background: linear-gradient(135deg, var(--cp-cyan), var(--cp-magenta));
+  box-shadow: 0 0 18px rgba(34, 211, 238, 0.5), 0 0 34px rgba(232, 121, 249, 0.25);
+}
+.cp-brand strong {
+  display: block;
+  font-size: 17px;
+  letter-spacing: 0.06em;
+  color: #e8f6ff;
+  text-shadow: 0 0 12px rgba(34, 211, 238, 0.4);
+}
+.cp-brand span {
+  display: block;
+  font-size: 11.5px;
+  color: var(--cp-text-dim);
+  margin-top: 2px;
+}
+
+/* HUD 芯片(与首页一致) */
+.cp-chip {
+  font-family: var(--cp-font-mono);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  color: #67e8f9;
+  border: 1px solid rgba(103, 232, 249, 0.35);
+  background: rgba(6, 16, 32, 0.55);
+  padding: 5px 11px;
+  border-radius: 3px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  backdrop-filter: blur(2px);
+}
+.cp-chip b { color: #f0abfc; font-weight: 600; }
+.cp-blink {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--cp-cyan); box-shadow: 0 0 8px var(--cp-cyan);
+  animation: cp-blink 1.4s steps(2) infinite;
+}
+@keyframes cp-blink { 50% { opacity: 0.15; } }
+
+/* 公共霓虹按钮(切角) */
+.cp-btn {
+  position: relative;
+  border: none;
+  border-radius: 4px;
+  padding: 12px 24px;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+  clip-path: polygon(9px 0, 100% 0, 100% calc(100% - 9px), calc(100% - 9px) 100%, 0 100%, 0 9px);
+}
+.cp-btn:hover { transform: translateY(-2px); }
+.cp-btn-primary {
+  color: #03121a;
+  background: linear-gradient(92deg, var(--cp-cyan), var(--cp-blue) 55%, var(--cp-purple));
+  box-shadow: 0 0 22px rgba(34, 211, 238, 0.4);
+}
+.cp-btn-primary:hover { box-shadow: 0 0 32px rgba(34, 211, 238, 0.65); }
+.cp-btn-ghost {
+  color: #7df3ff;
+  background: rgba(8, 20, 40, 0.6);
+  border: 1px solid rgba(34, 211, 238, 0.45);
+  backdrop-filter: blur(2px);
+}
+.cp-btn-ghost:hover {
+  background: rgba(14, 34, 62, 0.8);
+  box-shadow: inset 0 0 14px rgba(34, 211, 238, 0.12), 0 0 16px rgba(34, 211, 238, 0.25);
+}
+.cp-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* 公共 spinner */
+.cp-spinner {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 2px solid rgba(125, 243, 255, 0.3);
+  border-top-color: #7df3ff;
+  animation: cp-spin 0.8s linear infinite;
+  display: inline-block;
+  vertical-align: -2px;
+  margin-right: 8px;
+}
+@keyframes cp-spin { to { transform: rotate(360deg); } }
+
+/* 状态点 */
+.cp-dot { width: 7px; height: 7px; border-radius: 50%; display: inline-block; margin-right: 7px; }
+.cp-dot-orange { background: #fb923c; box-shadow: 0 0 8px rgba(251, 146, 60, 0.8); }

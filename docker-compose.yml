@@ -64,8 +64,10 @@ services:
     restart: unless-stopped
     environment:
       # ── 部署子路径（nginx 模板经 envsubst 运行时注入，改配置重启即生效）──
+      # API_BASE_PATH 显式默认 /api/：entrypoint 子进程导出未传导到 envsubst 时
+      # 的兜底（否则 location 为空导致 nginx 拒绝启动）
       APP_BASE_PATH: ${APP_BASE_PATH:-/}
-      API_BASE_PATH: ${API_BASE_PATH:-}
+      API_BASE_PATH: ${API_BASE_PATH:-/api/}
     ports:
       - "${WEB_PORT:-8080}:80"
     depends_on:

@@ -94,6 +94,11 @@ export default function GlobeIntro() {
     resize()
     const ro = new ResizeObserver(resize)
     ro.observe(wrap)
+    // 兜底：挂载后布局稳定时再校准一次（首帧偶发 0 尺寸导致画布空白）
+    const winResize = () => resize()
+    window.addEventListener('resize', winResize)
+    const gt0 = setTimeout(resize, 60)
+    const gt1 = setTimeout(resize, 300)
 
     // 旋转状态：yaw 自转，pitch 俯仰；拖动带惯性，空闲后回到自转
     let yaw = -1.2, pitch = 0.32
@@ -295,6 +300,9 @@ export default function GlobeIntro() {
     return () => {
       cancelAnimationFrame(raf)
       ro.disconnect()
+      window.removeEventListener('resize', winResize)
+      clearTimeout(gt0)
+      clearTimeout(gt1)
       canvas.removeEventListener('pointerdown', onDown)
       window.removeEventListener('pointermove', onMove)
       window.removeEventListener('pointerup', onUp)
