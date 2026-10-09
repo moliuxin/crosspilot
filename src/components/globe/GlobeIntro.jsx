@@ -1,5 +1,6 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useApp } from '../../app/store/AppContext'
 import './globe.css'
 
 /**
@@ -10,14 +11,17 @@ import './globe.css'
  * 交互：按住拖动旋转（带惯性），空闲后自动恢复旋转。
  */
 const HUB = { name: '中国 · 制造带', lat: 23.0, lon: 113.1 }
+// 目标市场节点:不渲染文字标签,只用多色发光点表达(参考图1/图2 融合)
 const MARKETS = [
-  { name: 'Moscow 莫斯科', lat: 55.75, lon: 37.6 },
-  { name: 'London 伦敦', lat: 51.5, lon: -0.12 },
-  { name: 'Hamburg 汉堡', lat: 53.55, lon: 9.99 },
-  { name: 'Dubai 迪拜', lat: 25.2, lon: 55.27 },
-  { name: 'Singapore 新加坡', lat: 1.35, lon: 103.8 },
-  { name: 'Los Angeles 洛杉矶', lat: 34.05, lon: -118.24 },
+  { lat: 55.75, lon: 37.6, color: '250,204,21' },
+  { lat: 51.5, lon: -0.12, color: '134,239,172' },
+  { lat: 53.55, lon: 9.99, color: '96,165,250' },
+  { lat: 25.2, lon: 55.27, color: '251,146,60' },
+  { lat: 1.35, lon: 103.8, color: '232,121,249' },
+  { lat: 34.05, lon: -118.24, color: '34,211,238' },
 ]
+// 弧线颜色跟随两端节点色系
+const ARC_COLORS = ['250,204,21', '134,239,172', '96,165,250', '251,146,60', '232,121,249', '34,211,238']
 
 const D2R = Math.PI / 180
 function ll2v(lat, lon) {
@@ -42,24 +46,26 @@ function buildWire() {
 }
 function buildArcs() {
   const a = ll2v(HUB.lat, HUB.lon)
-  return MARKETS.map((m, mi) => {
-    const b = ll2v(m.lat, m.lon)
-    const pts = []
-    for (let i = 0; i <= 48; i++) {
-      const t = i / 48
-      const lift = 1 + 0.22 * Math.sin(Math.PI * t)
-      const raw = { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t, z: a.z + (b.z - a.z) * t }
-      const n = norm(raw)
-      pts.push({ x: n.x * lift, y: n.y * lift, z: n.z * lift })
-    }
-    return { pts, offset: mi * 0.17, speed: 0.11 + mi * 0.013, market: m }
-  })
+    return MARKETS.map((m, mi) => {
+      const b = ll2v(m.lat, m.lon)
+      const pts = []
+      for (let i = 0; i <= 48; i++) {
+        const t = i / 48
+        const lift = 1 + 0.22 * Math.sin(Math.PI * t)
+        const raw = { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t, z: a.z + (b.z - a.z) * t }
+        const n = norm(raw)
+        pts.push({ x: n.x * lift, y: n.y * lift, z: n.z * lift })
+      }
+      return { pts, offset: mi * 0.17, speed: 0.11 + mi * 0.013, market: m }
+    })
 }
 
 export default function GlobeIntro() {
   const navigate = useNavigate()
   const wrapRef = useRef(null)
   const canvasRef = useRef(null)
+  const { authState, login, register, toast } = useApp()
+  const [authOpen, setAuthOpen] = useState(false)
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -210,10 +216,10 @@ export default function GlobeIntro() {
         ctx.fillRect(cx + q.x * R - size / 2, cy - q.y * R - size / 2, size, size)
       }
 
-      // 出海弧线 + 动画光点（青/品红交替）
+      // 出海弧线 + 动画光点（每条弧线用自己节点的颜色,无文字标签）
       for (let ai = 0; ai < arcs.length; ai++) {
         const arc = arcs[ai]
-        const neon = ai % 2 === 0 ? '56,189,248' : '232,121,249'
+        const neon = ARC_COLORS[ai % ARC_COLORS.length]
         let prev = null
         ctx.lineWidth = 1.2
         for (let i = 0; i < arc.pts.length; i++) {
@@ -260,23 +266,28 @@ export default function GlobeIntro() {
         ctx.stroke()
       }
 
-      // 目标市场脉冲点 + 标签（品红点 · 青标签）
-      ctx.font = '11px ui-monospace, "Cascadia Mono", Consolas, "Microsoft YaHei", monospace'
+      // 目标市场脉冲点（多色发光,不带文字标签 —— 图1/图2 融合）
       for (const m of MARKETS) {
         const q = rot(ll2v(m.lat, m.lon))
         if (q.z <= 0.05) continue
         const mx = cx + q.x * R, my = cy - q.y * R
-        const a = 0.35 + q.z * 0.65
-        ctx.fillStyle = `rgba(232,121,249,${a})`
+        const a = 0.4 + q.z * 0.6
+        const c = m.color
+        ctx.fillStyle = `rgba(${c},${a})`
         ctx.beginPath()
-        ctx.arc(mx, my, 2.6, 0, 6.283)
+        ctx.arc(mx, my, 2.8, 0, 6.283)
         ctx.fill()
-        ctx.strokeStyle = `rgba(34,211,238,${a * 0.5})`
+        // 发光晕
+        ctx.fillStyle = `rgba(${c},${a * 0.16})`
         ctx.beginPath()
-        ctx.arc(mx, my, 5 + Math.sin(t * 2 + m.lon) * 1.6, 0, 6.283)
+        ctx.arc(mx, my, 9, 0, 6.283)
+        ctx.fill()
+        // 脉冲环
+        ctx.strokeStyle = `rgba(${c},${a * 0.55})`
+        ctx.lineWidth = 1
+        ctx.beginPath()
+        ctx.arc(mx, my, 5 + Math.sin(t * 2 + m.lon) * 1.8, 0, 6.283)
         ctx.stroke()
-        ctx.fillStyle = `rgba(165,243,252,${a})`
-        ctx.fillText(m.name, mx + 9, my + 3.5)
       }
     }
     raf = requestAnimationFrame(frame)
@@ -320,9 +331,15 @@ export default function GlobeIntro() {
               <button className="g-btn g-primary" onClick={() => navigate('/templates')}>
                 免登录看模板商城
               </button>
-              <button className="g-btn g-ghost" onClick={() => navigate('/login')}>
-                登录 / 注册
-              </button>
+              {authState === 'authed' ? (
+                <button className="g-btn g-ghost" onClick={() => navigate('/')}>
+                  进入工作台 →
+                </button>
+              ) : (
+                <button className="g-btn g-ghost" onClick={() => setAuthOpen(true)}>
+                  登录 / 注册
+                </button>
+              )}
             </div>
             <div className="globe-hint">DRAG TO ROTATE · 按住地球拖动旋转 · 松手自动巡航</div>
           </div>
@@ -427,7 +444,11 @@ export default function GlobeIntro() {
         <p>免登录逛模板商城，或注册开始 1 次免费 AI 完整生成。</p>
         <div className="globe-actions gp-center">
           <button className="g-btn g-primary" onClick={() => navigate('/templates')}>免登录看模板商城</button>
-          <button className="g-btn g-ghost" onClick={() => navigate('/login')}>登录 / 注册</button>
+          {authState === 'authed' ? (
+            <button className="g-btn g-ghost" onClick={() => navigate('/')}>进入工作台 →</button>
+          ) : (
+            <button className="g-btn g-ghost" onClick={() => setAuthOpen(true)}>登录 / 注册</button>
+          )}
         </div>
       </section>
 
@@ -435,6 +456,109 @@ export default function GlobeIntro() {
         <span>© {new Date().getFullYear()} CROSSPILOT · SITEPILOT // NEON EDITION</span>
         <span>客户买的不是网站，是海外询盘与可信的生意机会</span>
       </footer>
+
+      {authOpen && (
+        <AuthModal
+          onClose={() => setAuthOpen(false)}
+          onAuthed={() => {
+            setAuthOpen(false)
+            toast('已登录，欢迎回来', 'success')
+          }}
+        />
+      )}
+    </div>
+  )
+}
+
+/**
+ * 首页登录/注册弹窗：不整页遮挡（半透明玻璃 + 背后页面可见），
+ * 登录成功留在首页（此时按钮变为「进入工作台」）。
+ */
+function AuthModal({ onClose, onAuthed }) {
+  const { login, register, toast } = useApp()
+  const [tab, setTab] = useState('login')
+  const [form, setForm] = useState({ email: '', password: '', company_name: '', industry: '' })
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+
+  const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }))
+
+  function errText(e) {
+    const d = e?.detail ?? e?.message ?? e
+    if (Array.isArray(d)) return d.map((x) => x.msg || JSON.stringify(x)).join('; ')
+    return typeof d === 'string' ? d : '操作失败，请重试'
+  }
+
+  async function submit(e) {
+    e.preventDefault()
+    setError('')
+    setBusy(true)
+    try {
+      if (tab === 'login') {
+        await login(form.email.trim(), form.password)
+      } else {
+        await register({
+          email: form.email.trim(),
+          password: form.password,
+          company_name: form.company_name.trim(),
+          industry: form.industry.trim(),
+        })
+        toast('账户已创建，已为你初始化独立站点空间', 'success')
+      }
+      onAuthed()
+    } catch (err) {
+      setError(errText(err))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  function fillDemo() {
+    setTab('login')
+    setForm((f) => ({ ...f, email: 'demo@aquaflow-demo.com', password: 'demo-pass-123' }))
+    setError('')
+  }
+
+  return (
+    <div className="gp-auth-mask" onClick={onClose}>
+      <div className="gp-auth-modal" onClick={(e) => e.stopPropagation()}>
+        <button className="gp-auth-close" onClick={onClose} aria-label="关闭">×</button>
+        <div className="gp-auth-head">
+          <span className="mark">C</span>
+          <div>
+            <strong>CrossPilot</strong>
+            <span>登录后开始你的出海之旅</span>
+          </div>
+        </div>
+        <div className="gp-auth-tabs">
+          <button className={tab === 'login' ? 'on' : ''} onClick={() => { setTab('login'); setError('') }}>登录</button>
+          <button className={tab === 'register' ? 'on' : ''} onClick={() => { setTab('register'); setError('') }}>注册新企业</button>
+        </div>
+        <form className="gp-auth-form" onSubmit={submit}>
+          <label><span>邮箱</span>
+            <input type="email" required autoComplete="username" placeholder="you@company.com" value={form.email} onChange={set('email')} />
+          </label>
+          <label><span>密码</span>
+            <input type="password" required minLength={6} autoComplete={tab === 'login' ? 'current-password' : 'new-password'} placeholder="至少 6 位" value={form.password} onChange={set('password')} />
+          </label>
+          {tab === 'register' && (
+            <>
+              <label><span>企业名称</span>
+                <input required placeholder="例如：宁波 XX 机械有限公司" value={form.company_name} onChange={set('company_name')} />
+              </label>
+              <label><span>所属行业（可选）</span>
+                <input placeholder="例如：工业水处理设备" value={form.industry} onChange={set('industry')} />
+              </label>
+            </>
+          )}
+          {error && <div className="gp-auth-error">{error}</div>}
+          <button className="g-btn g-primary gp-auth-submit" disabled={busy}>
+            {busy ? '请稍候…' : tab === 'login' ? '登录' : '创建账户'}
+          </button>
+          <button type="button" className="gp-auth-demo" onClick={fillDemo}>填入演示账号</button>
+        </form>
+        <p className="gp-auth-note">注册即创建独立企业空间，数据与其他商家完全隔离 · 1 次免费 AI 完整生成</p>
+      </div>
     </div>
   )
 }
