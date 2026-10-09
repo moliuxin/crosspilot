@@ -857,3 +857,10 @@
     grid-template-columns: 1fr;
   }
 }
+
+
+/* AI 来源徽章（P0-REAL-AI-RUNTIME：如实标注 glm/降级/内置模板） */
+.ai-source-badge{display:inline-flex;align-items:center;gap:6px;margin-top:8px;font-size:12px;font-weight:600;padding:5px 12px;border-radius:999px;letter-spacing:.02em}
+.ai-source-badge.ok{background:#f0fdf4;color:#15803d;border:1px solid #bbf7d0}
+.ai-source-badge.warn{background:#fff7ed;color:#c2410c;border:1px solid #fed7aa}
+.ai-source-badge.dim{background:#f1f5f9;color:#64748b;border:1px solid #e2e8f0}

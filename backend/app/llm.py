@@ -89,6 +89,7 @@ _provider: LLMProvider | None = None
 _status: dict[str, Any] = {
     "degraded": False,
     "last_error": "",
+    "last_latency_ms": 0,
     "calls_total": 0,
     "calls_ok": 0,
     "calls_failed": 0,
@@ -114,39 +115,116 @@ def get_provider() -> LLMProvider:
     return _provider
 
 
-async def complete_json(system: str, user: str) -> dict[str, Any] | None:
+class AIRealUnavailableError(RuntimeError):
+    """DEMO_REQUIRE_REAL_AI=true 且真实模型不可用/调用失败时抛出（不静默降级）。"""
+
+    def __init__(self, reason: str):
+        super().__init__(f"真实AI服务暂时不可用，请检查模型连接。原因：{reason}")
+        self.reason = reason
+
+
+# 每次调用的执行记录（capability 级），由调用方落库为 AIExecution
+import time
+from collections import deque
+
+_executions: deque[dict[str, Any]] = deque(maxlen=256)
+
+
+def _record(capability: str, source: str, latency_ms: int, success: bool, error: str = "") -> None:
+    _executions.append(
+        {
+            "capability": capability or "unknown",
+            "provider": get_provider().name,
+            "model": _model_name(),
+            "source": source,  # glm | template_fallback | template
+            "latency_ms": latency_ms,
+            "success": success,
+            "error": error[:500],
+        }
+    )
+
+
+def _model_name() -> str:
+    provider = get_provider()
+    return getattr(provider, "model", "") or provider.name
+
+
+def drain_executions() -> list[dict[str, Any]]:
+    """取走自上次以来的执行记录（供路由层写入 AIExecution 表）。"""
+    out = list(_executions)
+    _executions.clear()
+    return out
+
+
+async def complete_json(
+    system: str,
+    user: str,
+    capability: str = "",
+    schema_keys: list[str] | None = None,
+) -> dict[str, Any] | None:
     """安全调用：失败返回 None，由调用方决定降级策略。
 
-    每次真实调用（成功或失败）都会更新运行时状态，供 /api/health 暴露
-    degraded 标记 —— 前端据此显示「AI: real」或「AI: degraded」。
+    - ``capability``：能力标识（industry/persona/site_planner/...），落 AIExecution 用
+    - ``schema_keys``：返回 JSON 必须包含的顶层键；不符合时自动重试一次，仍失败按失败处理
+    - 成功结果会注入 ``_ai_source``（"glm"）与 ``_ai_model`` 供上层透传到前端
+    - DEMO_REQUIRE_REAL_AI=true：未配置真实模型或调用失败时抛 AIRealUnavailableError，不降级
     """
+    s = get_settings()
     provider = get_provider()
     if isinstance(provider, MockProvider):
+        # 未配置真实模型：模板链路由上层 service 完成，这里如实标注
+        _record(capability, "template", 0, True, "unconfigured: mock provider")
+        if s.demo_require_real_ai:
+            raise AIRealUnavailableError("未配置真实 LLM（SITEPILOT_LLM_PROVIDER/API_KEY）")
         return None
+
     _status["calls_total"] += 1
-    try:
-        result = await provider.complete_json(system, user)
-        _status["calls_ok"] += 1
-        _status["last_error"] = ""
-        _status["degraded"] = False
-        return result
-    except Exception as exc:  # pragma: no cover - 网络/配额等
-        _status["calls_failed"] += 1
-        # 部分网络异常（如 Windows 下的 ConnectTimeout）str 为空，回退到类型名，避免健康面板显示空白错误
-        _status["last_error"] = (str(exc).strip() or type(exc).__name__)[:200]
-        _status["degraded"] = True
-        logger.warning("LLM 调用失败，降级模板结果：%s", _status["last_error"])
-        return None
+    started = time.perf_counter()
+    last_error = ""
+    for attempt in (1, 2):  # schema 校验失败自动重试一次
+        try:
+            result = await provider.complete_json(system, user)
+            if schema_keys and not all(k in result for k in schema_keys):
+                missing = [k for k in schema_keys if k not in result]
+                last_error = f"schema 校验失败(第{attempt}次)，缺失字段：{','.join(missing)}"
+                logger.warning("LLM %s %s", capability or "-", last_error)
+                continue
+            latency_ms = int((time.perf_counter() - started) * 1000)
+            _status["calls_ok"] += 1
+            _status["last_error"] = ""
+            _status["degraded"] = False
+            _status["last_latency_ms"] = latency_ms
+            result["_ai_source"] = "glm"
+            result["_ai_model"] = provider.model
+            _record(capability, "glm", latency_ms, True)
+            return result
+        except Exception as exc:  # 网络/配额等
+            last_error = (str(exc).strip() or type(exc).__name__)[:200]
+            continue
+
+    latency_ms = int((time.perf_counter() - started) * 1000)
+    _status["calls_failed"] += 1
+    _status["last_error"] = last_error
+    _status["degraded"] = True
+    _status["last_latency_ms"] = latency_ms
+    logger.warning("LLM 调用失败，降级模板结果：%s", last_error)
+    _record(capability, "template_fallback", latency_ms, False, last_error)
+    if s.demo_require_real_ai:
+        raise AIRealUnavailableError(last_error)
+    return None
 
 
 # 运行时调用状态（进程内，非持久化）：真实 provider 配置了但调用失败 = degraded
 def status() -> dict[str, Any]:
-    """AI 能力运行状态：provider 配置 + 真实调用成败（供 /api/health）。"""
+    """AI 能力运行状态：provider 配置 + 真实调用成败（供 /api/health 与 /api/ai/status）。
+    绝不包含 API Key。"""
     provider = get_provider()
     base = provider.health()
+    base.pop("api_key", None)
     base.update(
         degraded=_status["degraded"],
         last_error=_status["last_error"],
+        last_latency_ms=_status.get("last_latency_ms", 0),
         calls_total=_status["calls_total"],
         calls_ok=_status["calls_ok"],
         calls_failed=_status["calls_failed"],
@@ -161,4 +239,5 @@ def reset_runtime_status() -> None:
     """测试辅助：清零运行时状态与 provider 单例。"""
     global _provider
     _provider = None
-    _status.update(degraded=False, last_error="", calls_total=0, calls_ok=0, calls_failed=0)
+    _status.update(degraded=False, last_error="", calls_total=0, calls_ok=0, calls_failed=0, last_latency_ms=0)
+    _executions.clear()

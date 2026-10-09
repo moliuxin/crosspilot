@@ -156,7 +156,8 @@ async def generate_site_plan(
 
     # 1) 行业理解
     industry = await llm.complete_json(
-        industry_analyzer.SYSTEM, industry_analyzer.build_user(product_category, product_description)
+        industry_analyzer.SYSTEM, industry_analyzer.build_user(product_category, product_description),
+        capability="industry_analyzer", schema_keys=["industry"],
     )
     source = "llm"
     if not industry or not industry.get("industry"):
@@ -167,7 +168,8 @@ async def generate_site_plan(
     from ..prompts import buyer_persona as bp_prompt
 
     personas = await llm.complete_json(
-        bp_prompt.SYSTEM, bp_prompt.build_user(industry, target_buyer)
+        bp_prompt.SYSTEM, bp_prompt.build_user(industry, target_buyer),
+        capability="buyer_persona", schema_keys=["personas"],
     )
     if not personas or not personas.get("personas"):
         personas = {
@@ -192,7 +194,10 @@ async def generate_site_plan(
 
     for m in markets:
         profile = market_profiles.get_profile(m) or {}
-        ml = await llm.complete_json(ml_prompt.SYSTEM, ml_prompt.build_user(m, profile, industry))
+        ml = await llm.complete_json(
+            ml_prompt.SYSTEM, ml_prompt.build_user(m, profile, industry),
+            capability="market_localization", schema_keys=["hero"],
+        )
         if ml and ml.get("hero"):
             market_layer[m] = ml
         else:
@@ -201,7 +206,8 @@ async def generate_site_plan(
 
     # 4) 站点结构
     plan = await llm.complete_json(
-        site_planner.SYSTEM, site_planner.build_user(industry, personas, markets)
+        site_planner.SYSTEM, site_planner.build_user(industry, personas, markets),
+        capability="site_planner", schema_keys=["site_structure"],
     )
     if plan and isinstance(plan.get("site_structure"), list) and plan["site_structure"]:
         structure = [s for s in plan["site_structure"] if s.get("type") in SECTION_TYPES]
@@ -236,6 +242,7 @@ async def generate_site_plan(
             product_category, ", ".join(markets), target_buyer,
             template_id or style_key, visual_style_profile["prompt_style"], sections,
         ),
+        capability="image_brief", schema_keys=["briefs"],
     )
     if briefs and isinstance(briefs.get("briefs"), list) and briefs["briefs"]:
         image_briefs = briefs["briefs"]

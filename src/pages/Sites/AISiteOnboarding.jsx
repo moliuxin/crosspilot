@@ -189,8 +189,14 @@ export default function AISiteOnboarding() {
 }
 
 function GenerateResult({ result, onEnter }) {
-  const { plan, site, assets, image_note } = result
+  const { plan, site, assets, image_note, ai_source, ai_model, ai_note } = result
   const markets = Object.keys(plan.markets || {})
+  const aiBadge =
+    ai_source === 'glm'
+      ? { cls: 'ok', text: `● ${ai_model || 'GLM'} 已连接 · 真实模型生成` }
+      : ai_source === 'template_fallback'
+        ? { cls: 'warn', text: '▲ 模板降级模式 · 真实模型调用失败，本次为降级模板' }
+        : { cls: 'dim', text: '○ 内置模板生成 · 未配置真实模型（SITEPILOT_LLM_*）' }
   return (
     <div className="panel ai-onboarding">
       <div className="panel-head">
@@ -198,8 +204,10 @@ function GenerateResult({ result, onEnter }) {
           <strong>「{site.name}」已生成</strong>
           <span>
             结构 {plan.site_structure?.length || 0} 个板块 · 三市场版本 {markets.length} 个 · AI 图片 {assets.length} 张
-            {plan._source === 'template' ? ' · 内容链路：内置模板（配置真实 LLM 后自动升级）' : ' · 内容链路：GLM'}
           </span>
+          <div className={`ai-source-badge ${aiBadge.cls}`} title={ai_note || ''}>
+            {aiBadge.text}
+          </div>
         </div>
         <button className="primary-btn" onClick={onEnter}>进入网站管理 →</button>
       </div>

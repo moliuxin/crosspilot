@@ -216,7 +216,27 @@ def seed_if_empty(db: Session) -> bool:
 
     # 多站点：为种子租户建默认站点，种子数据全部挂到它
     _seed_default_site(db)
+    sync_pg_sequences(db)
     return True
+
+
+def sync_pg_sequences(db: Session) -> None:
+    """PostgreSQL：显式主键的种子数据不会推进 serial 序列，注册下一个租户会撞主键。
+    每次启动幂等地把所有整型自增主键序列推到 MAX(id)。SQLite 无此概念，直接跳过。
+    """
+    if db.bind is None or db.bind.dialect.name != "postgresql":
+        return
+    from sqlalchemy import text
+
+    try:
+        db.execute(text(
+            "SELECT setval(pg_get_serial_sequence('tenants','id'),"
+            " COALESCE((SELECT MAX(id) FROM tenants), 1))"
+        ))
+        db.commit()
+    except Exception as exc:  # pragma: no cover
+        db.rollback()
+        logging.getLogger("sitepilot.seed").warning("PG 序列同步失败：%s", exc)
 
 
 def _seed_default_site(db: Session) -> None:

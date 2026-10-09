@@ -610,6 +610,37 @@ class Entitlement(Base):
         }
 
 
+class AIExecution(Base):
+    """AI 运行日志（P0-REAL-AI-RUNTIME）：每次 LLM 调用的来源/耗时/成败，绝不保存 API Key。"""
+
+    __tablename__ = "ai_executions"
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    tenant_id: Mapped[int | None] = mapped_column(ForeignKey("tenants.id"), nullable=True, index=True)
+    site_id: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
+    capability: Mapped[str] = mapped_column(String(64), default="", index=True)  # industry/persona/site_planner/...
+    provider: Mapped[str] = mapped_column(String(32), default="")
+    model: Mapped[str] = mapped_column(String(64), default="")
+    source: Mapped[str] = mapped_column(String(32), default="")  # glm / template_fallback / template
+    latency_ms: Mapped[int] = mapped_column(Integer, default=0)
+    success: Mapped[bool] = mapped_column(Boolean, default=True)
+    error: Mapped[str] = mapped_column(Text, default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, index=True)
+
+    def to_dict(self) -> dict:
+        return {
+            "id": self.id,
+            "capability": self.capability,
+            "provider": self.provider,
+            "model": self.model,
+            "source": self.source,
+            "latency_ms": self.latency_ms,
+            "success": self.success,
+            "error": self.error,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+        }
+
+
 class ServiceOrder(Base):
     """套餐 / 能力开通申请。点击购买产生真实记录，而非只弹一句"客服稍后联系"。"""
 

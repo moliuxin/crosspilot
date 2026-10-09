@@ -16,6 +16,7 @@ from .config import get_settings
 from .database import Base, SessionLocal, engine
 from .routers import (
     agent,
+    ai as ai_router,
     auth,
     brush,
     company,
@@ -32,7 +33,7 @@ from .routers import (
     sites,
     tasks,
 )
-from .seed import seed_if_empty
+from .seed import seed_if_empty, sync_pg_sequences
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 logger = logging.getLogger("sitepilot")
@@ -51,6 +52,8 @@ async def lifespan(_: FastAPI):
             logger.info("已写入种子数据")
         else:
             logger.info("数据库已有数据，跳过种子写入")
+        # PG：把自增序列推进到 MAX(id)（种子显式主键不推进序列，注册会撞主键）
+        sync_pg_sequences(db)
     finally:
         db.close()
     yield
@@ -274,6 +277,7 @@ for r in (
     site.router,
     seo.router,
     agent.router,
+    ai_router.router,
 ):
     app.include_router(r, prefix=settings.api_prefix)
 

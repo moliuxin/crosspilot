@@ -337,16 +337,28 @@ async def generate_site_full(
                 },
             )
 
-    # 2) 结构化生成（LLM 优先，失败降级模板，不中断）
-    plan = await site_generation.generate_site_plan(
-        company_name=payload.company_name.strip(),
-        product_category=category,
-        product_description=payload.product_description.strip(),
-        target_buyer=payload.target_buyer.strip(),
-        target_markets=markets,
-        preferred_style=payload.preferred_style,
-        template_id=payload.template_preference.strip(),
+    # 2) 结构化生成（LLM 优先，失败降级模板；Demo 模式下真实模型不可用会明确报错）
+    from .. import llm as llm_mod
+
+    try:
+        plan = await site_generation.generate_site_plan(
+            company_name=payload.company_name.strip(),
+            product_category=category,
+            product_description=payload.product_description.strip(),
+            target_buyer=payload.target_buyer.strip(),
+            target_markets=markets,
+            preferred_style=payload.preferred_style,
+            template_id=payload.template_preference.strip(),
+        )
+    except llm_mod.AIRealUnavailableError as exc:
+        raise HTTPException(status_code=503, detail=str(exc))
+
+    # AI 来源标注（glm / template_fallback / template —— 前端如实展示，不冒充）
+    ai_runtime = llm_mod.status()
+    ai_source = "glm" if plan.get("_source") == "llm" else (
+        "template_fallback" if ai_runtime.get("degraded") else "template"
     )
+    ai_model = ai_runtime.get("model") or ai_runtime.get("provider") or ""
 
     site_name = payload.company_name.strip() or f"{category}独立站"
     slug = _unique_slug(db, tid, site_name)
@@ -433,6 +445,23 @@ async def generate_site_full(
     if used_free:
         usage.free_generation_used += 1
 
+    # AI 运行日志落库（capability 级证据链，绝不保存 API Key）
+    for ex in llm_mod.drain_executions():
+        db.add(
+            models.AIExecution(
+                id=new_id("ai"),
+                tenant_id=tid,
+                site_id=site.id,
+                capability=ex["capability"],
+                provider=ex["provider"],
+                model=ex["model"],
+                source=ex["source"],
+                latency_ms=ex["latency_ms"],
+                success=ex["success"],
+                error=ex["error"],
+            )
+        )
+
     db.commit()
     db.refresh(site)
 
@@ -443,6 +472,13 @@ async def generate_site_full(
         "assets": assets,
         "image_failed": failed,
         "image_note": "部分 AI 图片生成失败，可重新生成" if failed else "",
+        "ai_source": ai_source,
+        "ai_model": ai_model,
+        "ai_note": {
+            "glm": "真实 GLM 生成",
+            "template_fallback": "真实模型调用失败，本次内容为降级模板生成（已如实标注）",
+            "template": "未配置真实模型，本次内容为内置模板生成（已如实标注）",
+        }[ai_source],
         "free_quota": {"used": usage.free_generation_used, "limit": usage.free_generation_limit},
     }
 

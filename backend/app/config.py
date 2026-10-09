@@ -45,6 +45,10 @@ class Settings(BaseSettings):
     llm_model: str = "gpt-4o-mini"
     llm_timeout: float = 60.0
 
+    # 国赛 Demo 模式：true 时真实 LLM 不可用不再静默降级模板，
+    # 直接报「真实AI服务暂时不可用」——用于向评委证明没有冒充 AI。
+    demo_require_real_ai: bool = False
+
     # Image provider（GLM-Image 走 OpenAI 兼容图像协议；未配置 key 时用 mock 占位图）
     image_api_key: str = ""
     image_base_url: str = "https://open.bigmodel.cn/api/paas/v4"
