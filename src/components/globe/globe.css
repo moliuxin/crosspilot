@@ -415,3 +415,109 @@
   .gp-cta { padding: 80px 22px 60px; }
   .gp-foot { padding: 18px 22px 24px; }
 }
+
+/* ================= 登录/注册弹窗（不全屏遮挡） ================= */
+.gp-auth-mask {
+  position: fixed;
+  inset: 0;
+  z-index: 120;
+  display: grid;
+  place-items: center;
+  background: rgba(3, 7, 16, 0.45);
+  backdrop-filter: blur(3px);
+}
+.gp-auth-modal {
+  position: relative;
+  width: min(400px, calc(100vw - 40px));
+  max-height: calc(100vh - 60px);
+  overflow: auto;
+  border: 1px solid rgba(34, 211, 238, 0.35);
+  border-radius: 8px;
+  background: linear-gradient(180deg, rgba(10, 20, 42, 0.97), rgba(7, 13, 28, 0.98));
+  box-shadow: 0 0 40px rgba(34, 211, 238, 0.18), 0 24px 70px rgba(0, 0, 0, 0.55);
+  padding: 26px 26px 20px;
+  clip-path: polygon(16px 0, 100% 0, 100% calc(100% - 16px), calc(100% - 16px) 100%, 0 100%, 0 16px);
+  animation: gp-auth-in 0.22s ease;
+}
+@keyframes gp-auth-in {
+  from { opacity: 0; transform: translateY(10px) scale(0.98); }
+  to { opacity: 1; transform: none; }
+}
+.gp-auth-close {
+  position: absolute;
+  top: 12px;
+  right: 14px;
+  background: none;
+  border: none;
+  color: #64809f;
+  font-size: 22px;
+  cursor: pointer;
+  line-height: 1;
+}
+.gp-auth-close:hover { color: #7df3ff; }
+.gp-auth-head { display: flex; align-items: center; gap: 12px; margin-bottom: 18px; }
+.gp-auth-head .mark {
+  width: 38px; height: 38px; border-radius: 10px;
+  display: grid; place-items: center;
+  font-size: 19px; font-weight: 800; color: #04101c;
+  background: linear-gradient(135deg, #22d3ee, #e879f9);
+  box-shadow: 0 0 16px rgba(34, 211, 238, 0.5);
+}
+.gp-auth-head strong { display: block; font-size: 16px; color: #e8f6ff; }
+.gp-auth-head span { display: block; font-size: 11.5px; color: #7f96bb; margin-top: 2px; }
+.gp-auth-tabs { display: flex; gap: 8px; margin-bottom: 16px; }
+.gp-auth-tabs button {
+  flex: 1;
+  background: rgba(8, 20, 40, 0.7);
+  border: 1px solid rgba(34, 211, 238, 0.25);
+  color: #8fa3c8;
+  border-radius: 4px;
+  padding: 9px 0;
+  font-size: 13.5px;
+  cursor: pointer;
+  transition: 0.15s;
+}
+.gp-auth-tabs button.on {
+  color: #03121a;
+  background: linear-gradient(92deg, #22d3ee, #7df3ff);
+  border-color: transparent;
+  font-weight: 700;
+}
+.gp-auth-form { display: flex; flex-direction: column; gap: 12px; }
+.gp-auth-form label { display: flex; flex-direction: column; gap: 6px; }
+.gp-auth-form label span { font-size: 11.5px; color: #7f96bb; letter-spacing: 0.06em; }
+.gp-auth-form input {
+  background: rgba(6, 14, 30, 0.9);
+  border: 1px solid rgba(148, 163, 199, 0.25);
+  border-radius: 5px;
+  padding: 11px 13px;
+  font-size: 14px;
+  color: #e8f6ff;
+  outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.gp-auth-form input:focus {
+  border-color: rgba(34, 211, 238, 0.7);
+  box-shadow: 0 0 0 3px rgba(34, 211, 238, 0.15);
+}
+.gp-auth-error {
+  font-size: 12.5px;
+  color: #fda4af;
+  background: rgba(248, 113, 113, 0.1);
+  border: 1px solid rgba(248, 113, 113, 0.35);
+  border-radius: 5px;
+  padding: 9px 12px;
+  line-height: 1.6;
+}
+.gp-auth-submit { width: 100%; margin-top: 4px; }
+.gp-auth-demo {
+  background: none;
+  border: none;
+  color: #67e8f9;
+  font-size: 12px;
+  cursor: pointer;
+  letter-spacing: 0.04em;
+  padding: 2px 0;
+}
+.gp-auth-demo:hover { text-decoration: underline; }
+.gp-auth-note { font-size: 11px; color: #5a7297; line-height: 1.7; margin: 14px 0 0; }
