@@ -1,0 +1,75 @@
+# CrossPilot 一键部署：nginx(前端+反代) + FastAPI(后端) + PostgreSQL
+#
+# 使用：
+#   cp .env.docker.example .env   # 修改密码与 JWT 密钥
+#   docker compose up -d --build
+#   打开 http://localhost:8080
+#
+# 注意：POSTGRES_PASSWORD 请使用字母数字（数据库 URL 不做 URL 编码）
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-crosspilot}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-crosspilot}
+      POSTGRES_DB: ${POSTGRES_DB:-crosspilot}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-crosspilot} -d ${POSTGRES_DB:-crosspilot}"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      # 数据库：Postgres（首次启动自动建表 + 播种演示数据）
+      SITEPILOT_DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-crosspilot}:${POSTGRES_PASSWORD:-crosspilot}@db:5432/${POSTGRES_DB:-crosspilot}
+      # 会话密钥：生产必须通过 .env 覆盖
+      SITEPILOT_JWT_SECRET: ${SITEPILOT_JWT_SECRET:-change-me-in-production}
+      SITEPILOT_JWT_EXPIRE_HOURS: ${SITEPILOT_JWT_EXPIRE_HOURS:-72}
+      # 前端静态资源与 API 同源（经 nginx 反代），CORS 保持宽松即可
+      SITEPILOT_CORS_ORIGINS: ${SITEPILOT_CORS_ORIGINS:-*}
+      # AI Provider：默认 mock 零依赖；接入真实模型改 .env
+      SITEPILOT_LLM_PROVIDER: ${SITEPILOT_LLM_PROVIDER:-mock}
+      SITEPILOT_LLM_API_KEY: ${SITEPILOT_LLM_API_KEY:-}
+      SITEPILOT_LLM_BASE_URL: ${SITEPILOT_LLM_BASE_URL:-https://api.openai.com/v1}
+      SITEPILOT_LLM_MODEL: ${SITEPILOT_LLM_MODEL:-gpt-4o-mini}
+      SITEPILOT_IMAGE_API_KEY: ${SITEPILOT_IMAGE_API_KEY:-}
+      SITEPILOT_FREE_GENERATION_LIMIT: ${SITEPILOT_FREE_GENERATION_LIMIT:-1}
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/health', timeout=5)"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+
+  web:
+    build:
+      context: .
+      dockerfile: docker/web/Dockerfile
+      args:
+        VITE_API_BASE: /   # 同源相对路径，nginx 反代 /api
+    restart: unless-stopped
+    ports:
+      - "${WEB_PORT:-8080}:80"
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO", "/dev/null", "http://127.0.0.1/"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+
+volumes:
+  pgdata:

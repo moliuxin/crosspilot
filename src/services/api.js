@@ -11,7 +11,8 @@ import { marketTemplates } from '../data/marketTemplates'
 import { skills } from '../data/skills'
 import { loadDb, saveDb, uid } from './db'
 
-export const API_BASE = import.meta.env.VITE_API_BASE || 'http://127.0.0.1:8000'
+// VITE_API_BASE 去掉末尾斜杠：设为 "/" 时空串（同源相对路径，配合 nginx 反代 /api）
+export const API_BASE = (import.meta.env.VITE_API_BASE || 'http://127.0.0.1:8000').replace(/\/+$/, '')
 const API_PREFIX = '/api'
 const TIMEOUT = 8000
 

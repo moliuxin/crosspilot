@@ -1,7 +1,7 @@
 """账户安全：密码哈希 + JWT 签发校验 + 当前用户/租户依赖。
 
 设计要点：
-- 密码用 bcrypt（passlib）哈希，绝不明文存储。
+- 密码用 bcrypt 直接哈希，绝不明文存储（兼容历史 passlib 生成的 $2b$ 哈希）。
 - 会话用 JWT（PyJWT, HS256），载荷含 user_id / tenant_id / role / exp。
   密钥来自 SITEPILOT_JWT_SECRET（生产必须覆盖默认值）。
 - 业务端点统一依赖 ``current_user``（登录必需）与 ``tenant_scope``（租户隔离）。
@@ -12,16 +12,14 @@ from __future__ import annotations
 import datetime as dt
 from typing import Annotated
 
+import bcrypt
 import jwt
 from fastapi import Depends, Header, HTTPException, status
-from passlib.context import CryptContext
 from sqlalchemy.orm import Session
 
 from . import models
 from .config import get_settings
 from .database import get_db
-
-_pwd = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 ALGORITHM = "HS256"
 
@@ -30,13 +28,13 @@ ALGORITHM = "HS256"
 
 def hash_password(raw: str) -> str:
     # bcrypt 只处理前 72 字节，超长直接截断会让不同长密码碰撞，这里显式限制长度
-    return _pwd.hash(raw[:72])
+    return bcrypt.hashpw(raw[:72].encode("utf-8"), bcrypt.gensalt()).decode("ascii")
 
 
 def verify_password(raw: str, hashed: str) -> bool:
     try:
-        return _pwd.verify(raw[:72], hashed)
-    except Exception:
+        return bcrypt.checkpw(raw[:72].encode("utf-8"), hashed.encode("ascii"))
+    except (ValueError, UnicodeError):
         return False
 
 
