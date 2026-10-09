@@ -1,14 +1,14 @@
 # CrossPilot 前端镜像：Node 构建 dist → nginx 托管
 # 构建上下文 = 仓库根目录：
 #   docker build -f docker/web/Dockerfile -t crosspilot-web .
-# VITE_API_BASE=/ 表示同源相对路径，由 nginx 把 /api 反代到 api 容器
+# 默认无需构建参数：API 前缀由前端在运行时从页面地址推导（src/config/paths.js）
 FROM node:20-alpine AS build
 
 WORKDIR /app
 
-# 仓库暂无 package-lock.json，先 npm install；提交 lock 文件后可换成 npm ci
-COPY package.json ./
-RUN npm install --no-audit --no-fund
+# lock 文件已入库：npm ci 保证依赖与本地一致
+COPY package.json package-lock.json ./
+RUN npm ci --no-audit --no-fund
 
 COPY vite.config.js index.html site-preview.html ./
 COPY src ./src

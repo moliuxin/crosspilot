@@ -9,8 +9,7 @@ case "$APP" in
   /*) ;;
   *) APP="/$APP" ;;
 esac
-APP=$(printf '%s' "$APP" | sed -e 's|//\+|/|g')
-[ "$APP" = "//" ] && APP="/"
+APP=$(printf '%s' "$APP" | sed -e 's|//*|/|g')
 case "$APP" in
   */) ;;
   *) APP="$APP/" ;;
@@ -25,7 +24,8 @@ fi
 
 # ---- API_BASE_PATH → 目录形式（带尾斜杠）；留空 = ${APP_BASE_PATH}api/ ----
 API="${API_BASE_PATH:-}"
-if [ -z "$API" ]; then
+if [ -z "$API" ] || [ "$API" = "/" ]; then
+  # 显式 "/" 会导致 location / 与静态 location 重复（nginx 启动失败）→ 回退派生值
   API="${APP}api"
 else
   case "$API" in
@@ -33,8 +33,7 @@ else
     *) API="/$API" ;;
   esac
 fi
-API=$(printf '%s' "$API" | sed -e 's|//\+|/|g')
-[ "$API" = "//" ] && API="/"
+API=$(printf '%s' "$API" | sed -e 's|//*|/|g')
 case "$API" in
   */) ;;
   *) API="$API/" ;;

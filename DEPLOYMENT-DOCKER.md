@@ -90,9 +90,15 @@ upstream crosspilot_web {
     server 127.0.0.1:8080;
 }
 
+# WebSocket 升级映射（当前项目无 WS 端点，配置保留无害）
+map $http_upgrade $connection_upgrade {
+    default upgrade;
+    ''      close;
+}
+
 server {
     listen 443 ssl;
-    http2 on;
+    http2 on;                          # nginx >= 1.25.1；旧版本改为 listen 443 ssl http2;
     server_name example.com;
 
     # ssl_certificate     /etc/nginx/certs/example.com.pem;   # 证书由接入层统一管理
@@ -178,5 +184,8 @@ SITEPILOT_LLM_MODEL=deepseek-chat
 
 ## 已知限制
 
-- 仓库无 `package-lock.json` 生成的前端镜像用 `npm install` 构建；提交 lock 文件后建议换成 `npm ci`
-- 前端 API 前缀默认靠运行时推导，因此「API 与应用不同前缀」是唯一需要重建前端的场景（见上文例外）
+- 前端 API 前缀默认靠运行时推导（页面所在目录 + `api`）。若用户访问「不存在的前端深层路径」
+  （如 `/crosspilot/foo/bar`，非 hash 路由路径），页面会由 nginx 兜底渲染，但 API 推导会失准。
+  正常入口（`/crosspilot/` 与 hash 路由）不受影响；对确定性要求高时用 `VITE_APP_BASE_PATH` 构建注入
+- 外部监控探活：外部 Nginx 只转发 `/crosspilot/*`，可探测 `/crosspilot/`（静态 200）；
+  容器内探针走 `/healthz`（前缀无关，不对外暴露）
