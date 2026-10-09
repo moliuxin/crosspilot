@@ -1,0 +1,101 @@
+{
+  "project": "WorkBuddy SitePilot",
+  "mode": "continue_existing_project",
+  "priority_order": ["P0", "P1", "P2", "P3", "P4", "P5", "P6"],
+  "tasks": [
+    {
+      "id": "P0",
+      "title": "React/Vite migration",
+      "must_have": true,
+      "acceptance": [
+        "npm install succeeds",
+        "npm run dev starts application",
+        "npm run build succeeds",
+        "existing static demo preserved under legacy-demo",
+        "no blocking console errors"
+      ]
+    },
+    {
+      "id": "P1",
+      "title": "First AI website generation funnel",
+      "must_have": true,
+      "acceptance": [
+        "industry/company/product/market form",
+        "hero preview before verification",
+        "company identity verification mock",
+        "generation progress UI",
+        "free generation usage counter 1/1",
+        "paid gate for second generation and publish"
+      ]
+    },
+    {
+      "id": "P2",
+      "title": "Five merchant modules",
+      "must_have": true,
+      "modules": ["My Website", "Products", "Page Content", "Inquiries", "AI Growth"],
+      "acceptance": [
+        "all modules navigable",
+        "all modules include interactive states",
+        "RFQ only, no ecommerce checkout"
+      ]
+    },
+    {
+      "id": "P3",
+      "title": "Skill Center monetization",
+      "must_have": true,
+      "skills": [
+        "Product SEO Optimizer",
+        "GEO / AI Search Visibility",
+        "Market Localization",
+        "Competitor Intelligence",
+        "Product Copy Agent",
+        "Visual Scene Generator",
+        "Website Audit",
+        "Redesign Agent"
+      ]
+    },
+    {
+      "id": "P4",
+      "title": "Product SEO before/after comparison",
+      "must_have": true,
+      "fields": [
+        "title",
+        "slug",
+        "meta_description",
+        "h1",
+        "attributes",
+        "faq",
+        "image_alt",
+        "internal_links",
+        "product_schema",
+        "faq_schema"
+      ]
+    },
+    {
+      "id": "P5",
+      "title": "Market-based localization",
+      "must_have": true,
+      "markets": ["zh-CN", "en-US", "ru-RU"],
+      "rule": "Language is a market template, not direct translation"
+    },
+    {
+      "id": "P6",
+      "title": "Agent and MCP-ready architecture",
+      "must_have": true,
+      "acceptance": [
+        "at least 5 mock commands",
+        "query-result flow",
+        "draft generation",
+        "diff review",
+        "human confirmation before publish"
+      ]
+    }
+  ],
+  "non_goals": [
+    "shopping cart",
+    "online payment",
+    "logistics",
+    "consumer ecommerce order management",
+    "automatic AI production publish without confirmation"
+  ]
+}

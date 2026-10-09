@@ -1,0 +1,18 @@
+{
+  "market": "en-US",
+  "label": "English",
+  "based_on": "目标市场采购阅读策略（可配置，非刻板印象；允许用真实用户数据更新）",
+  "content_hierarchy": ["Benefits & outcomes", "Applications", "Specs & options", "Certifications", "Support & lead time"],
+  "buyer_focus": "采购决策重结果与收益，先看能解决什么问题再看细节",
+  "hero_strategy": "product close-up + application scenario，清晰的价值主张与 fast quote 入口",
+  "product_card_fields": ["Product name", "Model", "Key specs", "Applications", "Lead time", "Certifications"],
+  "trust_evidence_priority": ["Certifications", "Case studies", "Distributors & references", "Data sheets"],
+  "cta_style": "Get a Quote / Request Datasheet，直接、低承诺压力",
+  "faq_topics": ["Lead time", "OEM/ODM", "Warranty", "Compliance & certification"],
+  "visual_style": "clean international procurement visual，产品特写与应用场景，留白充分",
+  "image_style": "product close-up, application scenario, engineering project photography",
+  "layout_density": "中等密度，段落短，扫读友好",
+  "typography_guidance": "humanist sans，标题大、正文舒朗",
+  "tone": "confident, benefit-driven, concise",
+  "seo_guidance": "buyer-intent keywords (manufacturer/supplier/for sale)，FAQ schema，清晰 slug"
+}

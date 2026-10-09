@@ -1,0 +1,104 @@
+/* ============================================================
+   品牌进入动效 + AI 等待页
+   约束：颜色与 Logo 全部走 CSS 变量，由 JS 按客户品牌注入，
+        绝不写死 WorkBuddy 品牌。
+   ============================================================ */
+
+/* ---------- 1. 品牌进入动效 ---------- */
+.brand-intro{position:fixed;inset:0;z-index:9999;display:grid;place-items:center;overflow:hidden}
+.brand-intro .bi-bg{position:absolute;inset:0;background:var(--bi-bg);transition:opacity .4s ease}
+.brand-intro .bi-veil{
+  position:absolute;left:50%;top:50%;width:140vmax;height:140vmax;
+  transform:translate(-50%,-50%) scale(0);border-radius:50%;
+  background:var(--bi-bg);
+}
+.brand-intro .bi-center{position:relative;z-index:2;display:flex;flex-direction:column;align-items:center;gap:14px}
+
+.bi-logo{
+  width:76px;height:76px;border-radius:20px;display:grid;place-items:center;
+  font-size:30px;font-weight:800;letter-spacing:-.02em;
+  background:var(--bi-primary);color:#fff;
+}
+.bi-logo-img{width:76px;height:76px;object-fit:contain;border-radius:16px}
+.bi-name{font-size:19px;font-weight:700;color:var(--bi-fg);letter-spacing:.06em}
+.bi-sub{font-size:10.5px;letter-spacing:.24em;color:var(--bi-fg);opacity:.55}
+
+/* 完整版：Logo 缩放+淡入 → 遮罩展开 → 主体进入 */
+.brand-intro.full .bi-center{animation:biIn .7s cubic-bezier(.22,1,.36,1) both}
+.brand-intro.full .bi-logo,
+.brand-intro.full .bi-logo-img{animation:biLogo .8s cubic-bezier(.22,1,.36,1) both}
+.brand-intro.full .bi-name{animation:biUp .6s .18s cubic-bezier(.22,1,.36,1) both}
+.brand-intro.full .bi-sub{animation:biUp .6s .3s cubic-bezier(.22,1,.36,1) both}
+.brand-intro.full .bi-veil{animation:biExpand .7s .5s cubic-bezier(.4,0,.2,1) both}
+
+/* 缩短版：同会话二次进入 */
+.brand-intro.short{animation:biFade .5s ease both}
+.brand-intro.short .bi-logo,
+.brand-intro.short .bi-logo-img{animation:biLogoShort .45s ease both}
+
+/* 退出 */
+.brand-intro.exit{animation:biOut .42s ease forwards}
+.brand-intro.exit .bi-bg{opacity:0}
+
+@keyframes biIn{from{opacity:0;transform:scale(.94)}to{opacity:1;transform:scale(1)}}
+@keyframes biLogo{0%{opacity:0;transform:scale(.7)}60%{opacity:1;transform:scale(1.04)}100%{opacity:1;transform:scale(1)}}
+@keyframes biLogoShort{from{opacity:.4;transform:scale(.96)}to{opacity:1;transform:scale(1)}}
+@keyframes biUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+@keyframes biExpand{from{transform:translate(-50%,-50%) scale(0)}to{transform:translate(-50%,-50%) scale(1)}}
+@keyframes biOut{to{opacity:0;visibility:hidden}}
+@keyframes biFade{from{opacity:0}to{opacity:1}}
+
+/* 平台后台：白底，Logo 用品牌色 */
+.brand-intro.platform .bi-logo{box-shadow:0 16px 40px rgba(16,24,40,.14)}
+.brand-intro.platform .bi-name{color:var(--bi-fg)}
+
+/* 客户独立站：品牌深色底，Logo 深色时刻反白容器 */
+.brand-intro.site .bi-logo{background:rgba(255,255,255,.1);backdrop-filter:blur(6px)}
+.brand-intro.site .bi-logo-img{background:rgba(255,255,255,.08);padding:8px}
+
+/* ---------- 2. AI 品牌等待页 ---------- */
+.ai-wait{position:fixed;inset:0;z-index:9500;background:#fff;display:grid;place-items:center}
+.ai-wait.compact{position:relative;inset:auto;z-index:1;min-height:340px;border-radius:16px;border:1px solid var(--line)}
+.ai-wait-inner{display:flex;flex-direction:column;align-items:center;gap:0;text-align:center;padding:24px;max-width:440px;width:100%}
+
+.ai-logo-wrap{position:relative;display:grid;place-items:center;margin-bottom:26px}
+.ai-logo-halo{
+  position:absolute;width:150px;height:150px;border-radius:50%;
+  background:radial-gradient(circle,color-mix(in srgb,var(--aw-primary) 18%,transparent),transparent 68%);
+  animation:awHalo 2.4s ease-in-out infinite;
+}
+.ai-logo{
+  position:relative;width:60px;height:60px;border-radius:17px;display:grid;place-items:center;
+  font-size:24px;font-weight:800;color:#fff;background:var(--aw-primary);
+  animation:awFloat 2.4s ease-in-out infinite;
+  box-shadow:0 14px 34px color-mix(in srgb,var(--aw-primary) 32%,transparent);
+}
+.ai-logo-img{position:relative;width:60px;height:60px;object-fit:contain;animation:awFloat 2.4s ease-in-out infinite}
+
+.ai-wait-title{font-size:18px;font-weight:700;letter-spacing:-.01em;color:var(--text);margin-bottom:26px}
+
+.ai-wait-steps{display:flex;flex-direction:column;gap:11px;width:100%;margin-bottom:28px}
+.ai-step{display:flex;align-items:center;gap:10px;font-size:13px;color:#b6bdc9;transition:.3s;text-align:left}
+.ai-step-dot{width:7px;height:7px;border-radius:50%;background:#dfe3ea;flex-shrink:0;transition:.3s}
+.ai-step-text{transition:.3s}
+.ai-step.running{color:var(--text)}
+.ai-step.running .ai-step-dot{background:var(--aw-primary);animation:awPulse 1.1s ease-in-out infinite}
+.ai-step.done{color:#8b93a1}
+.ai-step.done .ai-step-dot{background:var(--aw-primary);opacity:.5}
+.ai-step.done .ai-step-text{text-decoration:line-through;text-decoration-color:#d9dee6}
+
+.ai-progress{display:flex;align-items:center;gap:12px;width:100%;max-width:280px}
+.ai-progress-bar{flex:1;height:3px;border-radius:2px;background:#eef1f6;overflow:hidden}
+.ai-progress-bar span{display:block;height:100%;background:var(--aw-primary);border-radius:2px;transition:width .5s cubic-bezier(.4,0,.2,1)}
+.ai-progress-num{font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums;min-width:32px;text-align:right}
+
+.ai-wait-hint{margin-top:20px;font-size:11.5px;color:#c3c9d3}
+
+@keyframes awHalo{0%,100%{transform:scale(1);opacity:.85}50%{transform:scale(1.12);opacity:.5}}
+@keyframes awFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}
+@keyframes awPulse{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.5);opacity:.5}}
+
+@media(max-width:640px){
+  .ai-wait-title{font-size:16px}
+  .ai-step{font-size:12.5px}
+}

@@ -1,0 +1,28 @@
+# WorkBuddy 完成后自检清单
+
+- [ ] 项目已迁移为 React + Vite 或同等可维护组件化工程
+- [ ] `npm install` 成功
+- [ ] `npm run dev` 可运行
+- [ ] `npm run build` 成功
+- [ ] 原静态 Demo 已保留为 legacy-demo，不影响新工程
+- [ ] 首次 AI 建站流程可从头点到尾
+- [ ] 企业身份验证为 Mock，但流程完整
+- [ ] 免费完整生成次数显示 1/1
+- [ ] 第二次生成触发付费入口
+- [ ] 发布/绑定域名触发正确付费入口
+- [ ] 5 个商家一级入口全部可访问
+- [ ] 产品可以新增/编辑并调用 AI Mock
+- [ ] Page Editor 具有左/中/右三栏交互
+- [ ] RFQ 询盘列表和详情可用
+- [ ] AI 增长页隐藏高级技术细节
+- [ ] Skill Center 至少 8 个 Skill
+- [ ] Product SEO Optimizer 有明显优化前后 Diff
+- [ ] 中文/英文/俄语不只是逐字翻译
+- [ ] Agent 至少支持 5 条 Mock 指令
+- [ ] Agent 修改经过 Draft → Diff → Human Confirm → Publish
+- [ ] 不存在购物车/在线支付/物流流程
+- [ ] PC 1440px 无明显错位
+- [ ] 移动端无明显错位
+- [ ] 无阻断性 console error
+- [ ] README 已更新
+- [ ] 最终提供工程 ZIP

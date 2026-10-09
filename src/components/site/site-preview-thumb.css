@@ -1,0 +1,41 @@
+/* 工作台内的独立站缩略 Hero（Onboarding 预览 / Localization 市场预览用）
+   保留自旧 site.css，作用是「后台里的预览」，不是客户前台。 */
+.hero-preview{overflow:hidden;border-radius:12px;border:1px solid var(--line)}
+
+.site-hero{position:relative;overflow:hidden;background:#fff;border-radius:14px}
+.site-hero .hero-bg{position:absolute;inset:0;background:linear-gradient(160deg,#f8faff,#eef3ff 60%,#e8eefc)}
+.site-hero .hero-inner{position:relative;display:grid;grid-template-columns:1.1fr .9fr;gap:26px;padding:56px 54px 40px;align-items:center}
+.site-hero .hero-tag{font-size:11px;letter-spacing:.14em;color:var(--blue);font-weight:700}
+.site-hero .hero-title{font-size:40px;line-height:1.15;letter-spacing:-.02em;margin:14px 0 16px;color:#0f172a}
+.site-hero .hero-desc{font-size:15px;color:#475569;line-height:1.7;max-width:520px;margin-bottom:22px}
+.site-hero .hero-cta{display:flex;gap:12px;flex-wrap:wrap}
+.site-hero .hero-btn-primary{background:var(--blue);color:#fff;border-radius:11px;padding:13px 24px;font-size:14.5px;font-weight:600}
+.site-hero .hero-btn-ghost{background:transparent;color:#0f172a;border:1px solid #cdd5e0;border-radius:11px;padding:13px 20px;font-size:14.5px}
+.site-hero .hero-stats{display:flex;gap:30px;margin-top:30px}
+.site-hero .hero-stats b{font-size:24px;display:block;color:#0f172a}
+.site-hero .hero-stats span{font-size:11.5px;color:#64748b}
+.site-hero .hero-visual{position:relative;display:grid;place-items:center;min-height:280px}
+.site-hero .hero-halo{position:absolute;width:260px;height:260px;border-radius:50%;background:radial-gradient(circle,#c7d5ff,transparent 70%)}
+.site-hero .hero-machine{position:relative;width:130px;height:180px;background:linear-gradient(160deg,#1e293b,#0f172a);border-radius:20px;display:flex;flex-direction:column;gap:10px;padding:20px;z-index:2;box-shadow:0 24px 60px rgba(15,23,42,.3)}
+.site-hero .hero-machine span{height:14px;background:#334155;border-radius:5px}
+.site-hero .hero-machine b{height:48px;background:#475569;border-radius:8px}
+.site-hero .hero-machine i{height:14px;background:var(--blue);border-radius:5px;width:62%}
+.site-hero .hero-techcard{position:absolute;background:#fff;border-radius:12px;padding:10px 14px;box-shadow:0 10px 30px rgba(16,24,40,.12);z-index:3}
+.site-hero .hero-techcard small{font-size:10px;color:#64748b;display:block}
+.site-hero .hero-techcard b{font-size:15px;color:#0f172a}
+.site-hero .hero-techcard.tc1{top:34px;left:8px}
+.site-hero .hero-techcard.tc2{bottom:40px;right:6px}
+.site-hero .hero-brandmark{position:absolute;top:10px;right:10px;font-weight:800;font-size:13px;letter-spacing:.08em;color:#0f172a;z-index:3}
+.site-hero .hero-brandmark span{font-size:8px;vertical-align:super}
+.site-hero .hero-trust{position:relative;display:flex;justify-content:space-around;padding:16px;background:#0f172a;color:#94a3b8;font-size:11.5px;letter-spacing:.12em;flex-wrap:wrap;gap:10px}
+
+.site-hero[data-market='ru-RU'] .hero-title{font-size:37px}
+.site-hero[data-market='ru-RU'] .hero-inner{padding:50px 54px 38px}
+.site-hero[data-market='zh-CN'] .hero-title{font-size:38px}
+
+@media(max-width:900px){
+  .site-hero .hero-inner{grid-template-columns:1fr;padding:34px 24px}
+  .site-hero .hero-title{font-size:28px}
+  .site-hero .hero-visual{min-height:220px}
+  .site-hero .hero-stats{gap:20px}
+}

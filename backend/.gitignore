@@ -1,0 +1,5 @@
+__pycache__/
+*.py[cod]
+.env
+sitepilot.db
+.pytest_cache/
