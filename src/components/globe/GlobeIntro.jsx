@@ -42,32 +42,37 @@ export default function GlobeIntro() {
         </nav>
       </header>
 
-      {/* ================= HERO(浅蓝 + 3D 地球) ================= */}
+      {/* ================= HERO(浅冰蓝 + 大型 3D 数字地球) ================= */}
       <section className="nh-hero" ref={heroRef}>
         <div className="nh-hero-copy">
-          <div className="nh-eyebrow">AI · GLOBAL GROWTH FOR B2B</div>
-          <h1>让中国企业<br />更快被全球客户看见</h1>
+          <div className="nh-eyebrow">AI驱动 · B2B GLOBAL GROWTH</div>
+          <h1>让中国企业<br /><span className="grad">更快被全球客户看见</span></h1>
           <p className="nh-sub">AI 驱动的 B2B 海外获客增长平台</p>
           <p className="nh-desc">
             从 AI 建站、市场本地化、SEO/GEO、Buyer Conversion 到 RFQ 询盘,
             让海外增长从「人工运营」升级为「AI 持续执行」。
           </p>
           <div className="nh-cta-row">
-            <button className="nh-btn xl" onClick={() => go('/sites/new')}>免费生成独立站</button>
-            <button className="nh-btn ghost xl" onClick={() => document.getElementById('nh-sec-1')?.scrollIntoView({ behavior: 'smooth' })}>查看产品演示 ↓</button>
+            <button className="nh-btn xl" onClick={() => go('/sites/new')}>免费生成独立站 →</button>
+            <button className="nh-btn ghost xl" onClick={() => document.getElementById('nh-sec-1')?.scrollIntoView({ behavior: 'smooth' })}>▶ 查看产品演示</button>
           </div>
           <div className="nh-chips">
-            <span>3 Market Profiles</span><span>Multi-Site</span><span>AI + Agent</span>
-            <span>SEO / GEO</span><span>RFQ</span>
+            <span className="nh-chip"><i>✦</i> AI建站 <small>智能生成独立站</small></span>
+            <span className="nh-chip"><i>⚝</i> SEO / GEO <small>双重增长引擎</small></span>
+            <span className="nh-chip"><i>◈</i> Buyer Conversion <small>采购转化准备度</small></span>
+            <span className="nh-chip"><i>🤖</i> Multi-Agent <small>AI业务任务执行</small></span>
+            <span className="nh-chip"><i>✉</i> RFQ <small>询盘转化闭环</small></span>
           </div>
         </div>
         <div className="nh-hero-globe">
           <Globe3D />
-          <div className="nh-globe-tag t-cn">🇨🇳 China</div>
-          <div className="nh-globe-tag t-en">🇺🇸 English Market</div>
-          <div className="nh-globe-tag t-ru">🇷🇺 Russian Market</div>
-          <div className="nh-globe-hint">拖动旋转 · 松手自动巡航</div>
+          <div className="nh-globe-tag t-cn">🇨🇳 中国市场<small>本土化表达</small></div>
+          <div className="nh-globe-tag t-en">🇺🇸 English Market<small>Buyer-oriented Content</small></div>
+          <div className="nh-globe-tag t-ru">🇷🇺 Русский рынок<small>Local Market Experience</small></div>
+          <div className="nh-globe-hint">🖱 拖动旋转 · 松手自动巡航</div>
         </div>
+        {/* 曲面衔接下一屏 */}
+        <div className="nh-hero-curve" aria-hidden="true" />
       </section>
 
       {/* ================= 1 AI SITE GENERATION ================= */}
