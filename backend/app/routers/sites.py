@@ -7,9 +7,13 @@
 """
 import secrets
 
+import logging
+
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import func
 from sqlalchemy.orm import Session
+
+logger = logging.getLogger(__name__)
 
 from .. import models, schemas
 from ..database import get_db
@@ -445,6 +449,20 @@ async def generate_site_full(
     if used_free:
         usage.free_generation_used += 1
 
+    # PHASE 6：三市场变体真实持久化（每市场独立 layout/tokens/文案/资产清单）
+    from ..services.market_variants import generate_variants as _gv
+
+    try:
+        variants = await _gv(db, tid, site)
+        variants_summary = [
+            {"market": v.market, "sections": len(v.layout_schema.get("sections", [])),
+             "assets": len(v.asset_manifest)}
+            for v in variants
+        ]
+    except Exception as exc:  # noqa: BLE001 — 变体失败不阻断主站生成
+        variants_summary = []
+        logger.warning("市场变体生成失败（不阻断主流程）：%s", str(exc)[:150])
+
     # AI 运行日志落库（capability 级证据链，绝不保存 API Key）
     for ex in llm_mod.drain_executions():
         db.add(
@@ -479,8 +497,45 @@ async def generate_site_full(
             "template_fallback": "真实模型调用失败，本次内容为降级模板生成（已如实标注）",
             "template": "未配置真实模型，本次内容为内置模板生成（已如实标注）",
         }[ai_source],
+        "market_variants": variants_summary,
         "free_quota": {"used": usage.free_generation_used, "limit": usage.free_generation_limit},
     }
+
+
+@router.get("/{site_id}/market-variants")
+def list_market_variants(site_id: str, db: Session = Depends(get_db), tid: int = Depends(tenant_scope)):
+    """PHASE 6:站点的市场变体(每市场独立 layout/tokens/content/资产清单)。"""
+    site = require_site(db, tid, site_id)
+    rows = (
+        db.query(models.SiteMarketVariant)
+        .filter(models.SiteMarketVariant.site_id == site.id)
+        .order_by(models.SiteMarketVariant.market)
+        .all()
+    )
+    return {"variants": [r.to_dict() for r in rows]}
+
+
+@router.get("/{site_id}/market-variants/{market}")
+def get_market_variant(site_id: str, market: str, db: Session = Depends(get_db), tid: int = Depends(tenant_scope)):
+    site = require_site(db, tid, site_id)
+    row = (
+        db.query(models.SiteMarketVariant)
+        .filter(models.SiteMarketVariant.site_id == site.id, models.SiteMarketVariant.market == market)
+        .first()
+    )
+    if row is None:
+        raise HTTPException(404, "该市场变体不存在,请先生成")
+    return row.to_dict()
+
+
+@router.post("/{site_id}/market-variants/generate", status_code=201)
+async def generate_market_variants(site_id: str, db: Session = Depends(get_db), tid: int = Depends(tenant_scope)):
+    """(Re)生成三市场变体:Industry → Theme/Layout/Transcreation × 3 市场 → Asset Slot 管线 → 持久化。"""
+    from ..services.market_variants import generate_variants
+
+    site = require_site(db, tid, site_id)
+    variants = await generate_variants(db, tid, site, regenerate=True)
+    return {"ok": True, "variants": [v.to_dict() for v in variants]}
 
 
 @router.get("/{site_id}/assets")

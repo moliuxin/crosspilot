@@ -55,6 +55,15 @@ async def lifespan(_: FastAPI):
             logger.info("数据库已有数据，跳过种子写入")
         # PG：把自增序列推进到 MAX(id)（种子显式主键不推进序列，注册会撞主键）
         sync_pg_sequences(db)
+        # PHASE 8：assets 表新增列（存量库补列；新库 create_all 已带）
+        from .skills._migrate_helpers import ensure_columns
+
+        ensure_columns(db, "assets", {
+            "product_id": "VARCHAR(64)",
+            "caption": "VARCHAR(255) DEFAULT ''",
+            "sort_order": "INTEGER DEFAULT 0",
+            "is_primary": "BOOLEAN DEFAULT FALSE",
+        })
     finally:
         db.close()
     yield

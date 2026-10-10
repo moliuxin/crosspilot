@@ -1,1 +1,4 @@
-export { CasesGrid } from './blocks'
+import { CasesGrid } from './blocks'
+
+export default CasesGrid
+export { CasesGrid }

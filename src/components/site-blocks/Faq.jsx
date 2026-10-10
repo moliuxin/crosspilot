@@ -1,1 +1,4 @@
-export { Faq } from './blocks'
+import { Faq } from './blocks'
+
+export default Faq
+export { Faq }

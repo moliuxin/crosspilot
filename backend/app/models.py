@@ -8,7 +8,7 @@
 """
 from datetime import datetime, timezone
 
-from sqlalchemy import JSON, Boolean, DateTime, Float, ForeignKey, Integer, String, Text
+from sqlalchemy import JSON, Boolean, DateTime, Float, ForeignKey, Integer, String, Text, UniqueConstraint
 from sqlalchemy.ext.mutable import MutableDict, MutableList
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -249,11 +249,17 @@ class Asset(Base):
     section_id: Mapped[str] = mapped_column(String(64), default="")
     role: Mapped[str] = mapped_column(String(32), default="")  # hero|application_scene|background|market_mood|product
 
-    source_type: Mapped[str] = mapped_column(String(16), default="AI_GENERATED")  # REAL | AI_GENERATED
+    source_type: Mapped[str] = mapped_column(String(16), default="AI_GENERATED")  # REAL | AI_GENERATED | VERIFIED_STOCK | FALLBACK
     provider: Mapped[str] = mapped_column(String(32), default="")
     prompt: Mapped[str] = mapped_column(Text, default="")
     url: Mapped[str] = mapped_column(Text, default="")
     note: Mapped[str] = mapped_column(String(255), default="")
+
+    # PHASE 8 Asset Slot / 产品图库(JHWorld ProductGalleryImage 思想,不另建表)
+    product_id: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
+    caption: Mapped[str] = mapped_column(String(255), default="")
+    sort_order: Mapped[int] = mapped_column(Integer, default=0)
+    is_primary: Mapped[bool] = mapped_column(Boolean, default=False)
 
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, index=True)
 
@@ -269,7 +275,55 @@ class Asset(Base):
             "prompt": self.prompt,
             "url": self.url,
             "note": self.note,
+            "product_id": self.product_id,
+            "caption": self.caption,
+            "sort_order": self.sort_order,
+            "is_primary": self.is_primary,
             "created_at": self.created_at.isoformat() if self.created_at else None,
+        }
+
+
+class SiteMarketVariant(Base):
+    """市场变体(PHASE 6):同一站点每个市场拥有真正独立的
+    layout_schema / content / design_tokens / asset_manifest。
+
+    Product Fact Layer(SKU/型号/参数/认证等)永远留在 Product 表共享,
+    任何 Market Skill 不得把事实写进变体或篡改产品。
+    """
+
+    __tablename__ = "site_market_variants"
+    __table_args__ = (UniqueConstraint("site_id", "market", name="uq_variant_site_market"),)
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    tenant_id: Mapped[int] = mapped_column(ForeignKey("tenants.id"), index=True)
+    site_id: Mapped[str] = mapped_column(ForeignKey("sites.id"), index=True)
+    market: Mapped[str] = mapped_column(String(16), index=True)
+    locale: Mapped[str] = mapped_column(String(16), default="")
+    layout_schema: Mapped[dict] = mapped_column(JSON, default=dict)     # [{id,type,variant,props,component_meta}]
+    content_json: Mapped[dict] = mapped_column(JSON, default=dict)      # hero copy / faq / cta 等(非事实)
+    design_tokens: Mapped[dict] = mapped_column(JSON, default=dict)     # ThemeStyleSkill 输出
+    visual_style_profile: Mapped[dict] = mapped_column(JSON, default=dict)
+    asset_manifest: Mapped[dict] = mapped_column(JSON, default=dict)    # {slot: {url, source_type, provider}}
+    status: Mapped[str] = mapped_column(String(16), default="draft")    # draft/published
+    version_id: Mapped[str] = mapped_column(String(64), default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
+
+    def to_dict(self) -> dict:
+        return {
+            "id": self.id,
+            "site_id": self.site_id,
+            "market": self.market,
+            "locale": self.locale,
+            "layout_schema": self.layout_schema,
+            "content_json": self.content_json,
+            "design_tokens": self.design_tokens,
+            "visual_style_profile": self.visual_style_profile,
+            "asset_manifest": self.asset_manifest,
+            "status": self.status,
+            "version_id": self.version_id,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "updated_at": self.updated_at.isoformat() if self.updated_at else None,
         }
 
 

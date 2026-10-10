@@ -1,1 +1,4 @@
-export { HeroIndustrial } from './blocks'
+import { HeroIndustrial } from './blocks'
+
+export default HeroIndustrial
+export { HeroIndustrial }

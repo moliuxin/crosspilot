@@ -4,8 +4,11 @@ import { marketTemplates, marketOrder } from '../../data/marketTemplates'
 import { useApp } from '../../app/store/AppContext'
 import { useEntitlement } from '../../app/store/useEntitlement'
 import SiteHero from '../../components/site/SiteHero'
+import MarketVariantsPanel from '../Sites/MarketVariantsPanel'
+import { useParams } from 'react-router-dom'
 
 export default function Localization() {
+  const params = useParams()
   const { currentMarket, setMarket, toast, openPaywall } = useApp()
   const { requireFeature } = useEntitlement()
   const [market, setLocalMarket] = useState(currentMarket)
@@ -68,7 +71,9 @@ export default function Localization() {
         </div>
       </div>
 
-      <div className="loc-bar">
+            <MarketVariantsPanel siteId={params?.siteId} />
+
+<div className="loc-bar">
         <div className="loc-bar-item">
           <span>已生成版本</span>
           <b>{generated.length} / {marketOrder.length}</b>

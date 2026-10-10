@@ -677,6 +677,18 @@ export const api = {
     return data
   },
 
+  /* ---------------- PHASE 6: 市场变体 ---------------- */
+  async getMarketVariants(siteId) {
+    const { ok, data } = await http('GET', `/sites/${encodeURIComponent(siteId)}/market-variants`)
+    return ok ? data.variants || [] : []
+  },
+
+  async generateMarketVariants(siteId) {
+    const { ok, data, error } = await http('POST', `/sites/${encodeURIComponent(siteId)}/market-variants/generate`)
+    if (!ok) throw error
+    return data
+  },
+
   /* ---------------- Agent ---------------- */
 
   /** Agent 指令：自然语言字符串或结构化 patch */
