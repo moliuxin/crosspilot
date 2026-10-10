@@ -183,7 +183,7 @@ class PublishRequest(BaseModel):
 class DraftCreate(BaseModel):
     """创建内容修改草稿（MCP update_draft 落点）。patch 为结构化写回数据。"""
 
-    entity_type: Literal["product", "page"]
+    entity_type: Literal["product", "page", "market_variant"]
     entity_id: str = Field(min_length=1)
     patch: dict = Field(default_factory=dict)
     title: str = Field(default="", max_length=255)
@@ -192,7 +192,7 @@ class DraftCreate(BaseModel):
 class RollbackRequest(BaseModel):
     """回滚到指定版本（恢复该版本的 before 快照）。"""
 
-    entity_type: Literal["product", "page"]
+    entity_type: Literal["product", "page", "market_variant"]
     entity_id: str = Field(min_length=1)
     version_id: str = Field(min_length=1)
 
@@ -212,7 +212,7 @@ class AgentCommand(BaseModel):
 
 
 class AgentRunRequest(BaseModel):
-    entity_type: Literal["product", "page"] | None = None
+    entity_type: Literal["product", "page", "market_variant"] | None = None
     entity_id: str | None = None
     market: Market | None = None
     patch: dict | None = None

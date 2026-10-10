@@ -28,6 +28,15 @@ def list_runs(limit: int = 20, db: Session = Depends(get_db), tid: int = Depends
     return {"runs": [r.to_dict() for r in q.all()]}
 
 
+@router.get("/runs/{run_id}")
+def get_run(run_id: str, db: Session = Depends(get_db), tid: int = Depends(tenant_scope)):
+    row = db.query(models.SkillRun).filter(
+        models.SkillRun.id == run_id, models.SkillRun.tenant_id == tid).first()
+    if not row:
+        raise HTTPException(404, "运行记录不存在")
+    return row.to_dict()
+
+
 @router.get("/{skill_id}")
 def skill_detail(skill_id: str):
     s = registry.get(skill_id)

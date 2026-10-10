@@ -61,8 +61,16 @@ async def lifespan(_: FastAPI):
         ensure_columns(db, "assets", {
             "product_id": "VARCHAR(64)",
             "caption": "VARCHAR(255) DEFAULT ''",
+            "alt_text": "VARCHAR(255) DEFAULT ''",
             "sort_order": "INTEGER DEFAULT 0",
             "is_primary": "BOOLEAN DEFAULT FALSE",
+        })
+        ensure_columns(db, "site_market_variants", {
+            "seo_metadata": "JSON DEFAULT '{}'::json",
+        })
+        ensure_columns(db, "skill_runs", {
+            "user_id": "VARCHAR(64) DEFAULT ''",
+            "finished_at": "TIMESTAMP WITH TIME ZONE",
         })
     finally:
         db.close()

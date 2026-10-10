@@ -60,7 +60,7 @@ def _resolve_public_tenant(db: Session, key: str) -> models.Tenant | None:
 
 
 @router.get("/site")
-def get_public_site(tenant: str = "", site: str = "", db: Session = Depends(get_db)):
+def get_public_site(tenant: str = "", site: str = "", market: str = "", db: Session = Depends(get_db)):
     """匿名读取已发布站点（品牌 / 联系 / 导航 / 首页区块 / 产品）。
 
     多站点后支持两种寻址：
@@ -74,7 +74,7 @@ def get_public_site(tenant: str = "", site: str = "", db: Session = Depends(get_
         t = db.get(models.Tenant, s_obj.tenant_id)
         if t is None:
             raise HTTPException(status.HTTP_404_NOT_FOUND, "站点不存在")
-        return _public_site_payload(db, t, s_obj)
+        return _public_site_payload(db, t, s_obj, market)
 
     t = _resolve_public_tenant(db, tenant)
     if t is None:
@@ -90,10 +90,10 @@ def get_public_site(tenant: str = "", site: str = "", db: Session = Depends(get_
         .filter(models.Site.tenant_id == t.id, models.Site.is_default.is_(True))
         .first()
     )
-    return _public_site_payload(db, t, site_obj)
+    return _public_site_payload(db, t, site_obj, market)
 
 
-def _public_site_payload(db: Session, t: models.Tenant, site_obj: models.Site | None) -> dict:
+def _public_site_payload(db: Session, t: models.Tenant, site_obj: models.Site | None, market: str = "") -> dict:
     """组装对外站点数据。site_obj 为空时（异常数据）回落租户级页面。"""
     s = db.get(models.SiteState, t.id)
     if s is None:
@@ -128,6 +128,15 @@ def _public_site_payload(db: Session, t: models.Tenant, site_obj: models.Site | 
     markets = (site_obj.target_markets if site_obj else None) or s.target_markets or ["en-US"]
     language = (site_obj.language if site_obj else "") or s.language
 
+    market_variant = None
+    if site_obj is not None:
+        vq = db.query(models.SiteMarketVariant).filter(models.SiteMarketVariant.site_id == site_obj.id)
+        if market:
+            vq = vq.filter(models.SiteMarketVariant.market == market)
+        v = vq.order_by(models.SiteMarketVariant.market).first()
+        if v is not None:
+            market_variant = v.to_dict()
+
     return {
         "ok": True,
         "tenant": {
@@ -135,6 +144,7 @@ def _public_site_payload(db: Session, t: models.Tenant, site_obj: models.Site | 
             "name": t.name,
             "industry": t.industry,
         },
+        "market_variant": market_variant,
         "site": (
             {
                 "id": site_obj.id,

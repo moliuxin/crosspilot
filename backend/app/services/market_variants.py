@@ -63,9 +63,7 @@ async def generate_variants(db, tenant_id: int, site: models.Site, *, regenerate
                 if s.get("type") == "hero":
                     s["props"] = {**s.get("props", {}), **copy["hero"]}
 
-        # ---- Asset Slot 管线(PHASE 8):REAL > AI_GENERATED > FALLBACK ----
-        manifest = await resolve_slots(db, tenant_id, site, market, sections, real_images, category, industry_id)
-
+        # ---- upsert 变体行(site_id+market 唯一)----
         variant = (
             db.query(models.SiteMarketVariant)
             .filter(models.SiteMarketVariant.site_id == site.id,
@@ -76,6 +74,28 @@ async def generate_variants(db, tenant_id: int, site: models.Site, *, regenerate
             variant = models.SiteMarketVariant(
                 id=new_id("smv"), tenant_id=tenant_id, site_id=site.id, market=market, locale=market)
             db.add(variant)
+
+        # ---- Asset Slot 管线(PHASE 8):REAL > AI_GENERATED > FALLBACK ----
+        manifest = await resolve_slots(db, tenant_id, site, market, sections, real_images, category, industry_id)
+
+        # 资产 URL 注入区块 props(hero.image 等)供 site-blocks 渲染真实 <img>
+        for s in sections:
+            slot = "hero" if s.get("type") == "hero" else s.get("type")
+            hit = manifest.get(slot) or manifest.get("hero")
+            if hit and hit.get("url"):
+                s["props"] = {**s.get("props", {}), "image": hit["url"],
+                              "image_source": hit.get("source_type", "")}
+
+        # SEO 元数据(每市场独立 Title/Description/Canonical/hreflang)
+        hero_copy = (copy.get("hero") or {})
+        base_title = hero_copy.get("title") or f"{site.name} — {category}"
+        variant.seo_metadata = {
+            "title": base_title[:70],
+            "description": (hero_copy.get("description") or industry.get("summary", ""))[:160],
+            "canonical": f"/site/{site.public_slug}/{market}/",
+            "hreflang": {m: f"/site/{site.public_slug}/{m}/" for m in MARKETS},
+            "og_type": "website",
+        }
         variant.layout_schema = {"sections": sections, "layout_source": layout.output.get("layout_source", "template") if layout else "template"}
         variant.content_json = {"copy": copy, "quality_report": (trans.output.get("quality_report") if trans else [])}
         variant.design_tokens = tokens

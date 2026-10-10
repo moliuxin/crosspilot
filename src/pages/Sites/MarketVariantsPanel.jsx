@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { api } from '../../services/api'
 import { useApp } from '../../app/store/AppContext'
 import { renderLayout } from '../../components/site-blocks'
@@ -11,13 +12,19 @@ const MARKET_META = {
 }
 
 /**
- * PHASE 6 前端:三市场变体并排 —— 真正不同的 layout_schema / design_tokens / 文案,
- * 由 site-blocks Schema 渲染器按变体数据渲染(不是同一 DOM 换文案)。
+ * PHASE 6 前端:三市场变体并排(真正不同的 layout_schema / tokens / 文案 / 资产)。
+ * PHASE 8:AI 画笔 — 点击区块选中 → 自然语言 → Draft/Diff → 确认发布 → 可回滚。
  */
 export default function MarketVariantsPanel({ siteId }) {
-  const { toast } = useApp()
+  const { toast, openPaywall } = useApp()
   const [variants, setVariants] = useState([])
+  const [siteSlug, setSiteSlug] = useState('')
   const [busy, setBusy] = useState(false)
+  const [selected, setSelected] = useState(null)   // {market, sectionId, type}
+  const [instruction, setInstruction] = useState('')
+  const [brushResult, setBrushResult] = useState(null)
+  const [brushBusy, setBrushBusy] = useState(false)
+  const [versionInfo, setVersionInfo] = useState(null)
 
   const load = useCallback(() => {
     if (!siteId) return
@@ -25,6 +32,13 @@ export default function MarketVariantsPanel({ siteId }) {
   }, [siteId])
 
   useEffect(() => { load() }, [load])
+
+  useEffect(() => {
+    if (!siteId) return
+    api.getSiteDetail(siteId)
+      .then((d) => setSiteSlug(d.site?.public_slug || ''))
+      .catch(() => setSiteSlug(''))
+  }, [siteId])
 
   async function regenerate() {
     setBusy(true)
@@ -39,6 +53,50 @@ export default function MarketVariantsPanel({ siteId }) {
     }
   }
 
+  async function runBrush() {
+    if (!selected || !instruction.trim()) return
+    setBrushBusy(true)
+    setBrushResult(null)
+    try {
+      const res = await api.brushGenerate(siteId, selected.market, selected.sectionId, instruction.trim())
+      setBrushResult(res)
+      toast(`草稿已生成(${res.ai_source === 'glm' ? 'GLM' : '模板'}),确认后才发布`, 'success')
+    } catch (e) {
+      const status = e?.status
+      if (status === 403) {
+        openPaywall('AI 画笔 · Pro', 'AI 画笔属于 Pro 能力,升级后即可圈选组件并让 AI 修改内容。', 'brush.edit')
+      } else {
+        toast(`生成失败:${e?.detail?.message || e?.message || '请重试'}`, 'warn')
+      }
+    } finally {
+      setBrushBusy(false)
+    }
+  }
+
+  async function confirmPublish() {
+    try {
+      const res = await api.publishDraft(brushResult.draft_id)
+      setVersionInfo(res.version)
+      setBrushResult(null)
+      setInstruction('')
+      load()
+      toast(`已发布 · 版本 v${res.version.version_no}(可回滚)`, 'success')
+    } catch (e) {
+      toast(`发布失败:${e?.detail?.message || e?.message}`, 'warn')
+    }
+  }
+
+  async function rollback() {
+    try {
+      await api.rollbackVersion(versionInfo.id, 'market_variant', versionInfo.entity_id)
+      setVersionInfo(null)
+      load()
+      toast('已回滚到发布前状态', 'success')
+    } catch (e) {
+      toast(`回滚失败:${e?.detail?.message || e?.message}`, 'warn')
+    }
+  }
+
   if (!siteId) return null
 
   return (
@@ -47,7 +105,8 @@ export default function MarketVariantsPanel({ siteId }) {
         <div>
           <h3>市场变体 · Market Variants(结构级)</h3>
           <p className="muted" style={{ fontSize: 12.5 }}>
-            每个市场拥有独立的布局顺序、设计令牌、文案与资产清单;Product Facts 三站共享不可变。
+            每市场独立布局/令牌/文案/资产;Product Facts 共享不可变。
+            {siteSlug && <> 公开站:<Link to={`/site/${siteSlug}/zh-CN/`}>中文</Link> · <Link to={`/site/${siteSlug}/en-US/`}>EN</Link> · <Link to={`/site/${siteSlug}/ru-RU/`}>RU</Link></>}
           </p>
         </div>
         <button className="primary-btn" onClick={regenerate} disabled={busy}>
@@ -57,7 +116,56 @@ export default function MarketVariantsPanel({ siteId }) {
 
       {variants.length === 0 && (
         <div className="empty" style={{ padding: '26px 0' }}>
-          尚无市场变体 —— 点击「生成三市场变体」,系统将按行业画像为每个市场产出独立结构。
+          尚无市场变体 —— 点击「生成三市场变体」。
+        </div>
+      )}
+
+      {/* AI 画笔操作条 */}
+      <div className="brush-bar">
+        <span className="brush-sel">
+          🖌 AI 画笔:{selected
+            ? `${MARKET_META[selected.market]?.flag || ''} ${selected.market} · ${selected.type} (${selected.sectionId})`
+            : '点击下方任一区块选中'}
+        </span>
+        <input
+          className="brush-input"
+          placeholder="例:更适合俄罗斯系统集成商,突出 10kg 负载、稳定供货和技术支持"
+          value={instruction}
+          onChange={(e) => setInstruction(e.target.value)}
+          disabled={!selected}
+        />
+        <button className="primary-btn" onClick={runBrush} disabled={!selected || !instruction.trim() || brushBusy}>
+          {brushBusy ? '生成中…' : '生成草稿'}
+        </button>
+        {versionInfo && (
+          <button className="ghost-btn" onClick={rollback}>⟲ 回滚 v{versionInfo.version_no}</button>
+        )}
+      </div>
+
+      {brushResult && (
+        <div className="brush-diff panel">
+          <div className="panel-head">
+            <div>
+              <h3>BEFORE / AFTER(确认后才写入公开变体)</h3>
+              <p className="muted" style={{ fontSize: 12 }}>来源:{brushResult.ai_source === 'glm' ? `GLM ${brushResult.model}` : '模板(已如实标注)'}</p>
+            </div>
+            <div>
+              <button className="primary-btn" onClick={confirmPublish}>✓ 确认并发布</button>
+              <button className="ghost-btn" onClick={() => setBrushResult(null)}>放弃</button>
+            </div>
+          </div>
+          <table className="brush-diff-table">
+            <thead><tr><th>字段</th><th>BEFORE</th><th>AFTER</th></tr></thead>
+            <tbody>
+              {(brushResult.diff || []).map((d, i) => (
+                <tr key={i}>
+                  <td>{d.field}</td>
+                  <td className="bd-before">{String(d.before).slice(0, 90) || '—'}</td>
+                  <td className="bd-after">{String(d.after).slice(0, 90) || '—'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       )}
 
@@ -83,11 +191,16 @@ export default function MarketVariantsPanel({ siteId }) {
                     CTA:{hero.cta}
                   </div>
                 )}
-                {renderLayout(sections, {
-                  designTokens: tokens,
-                  market: v.market,
-                  locale: v.locale,
-                })}
+                {sections.map((s) => (
+                  <div
+                    key={s.id}
+                    className={`mv-section${selected?.market === v.market && selected?.sectionId === s.id ? ' sel' : ''}`}
+                    onClick={() => setSelected({ market: v.market, sectionId: s.id, type: s.type })}
+                    title="点击选中,供 AI 画笔修改"
+                  >
+                    {renderLayout([s], { designTokens: tokens, market: v.market, locale: v.locale })}
+                  </div>
+                ))}
               </div>
               <footer className="mv-foot">
                 <span>资产 {assets.length}:{assets.map((a) => a.source_type).filter(Boolean).join(' / ') || '—'}</span>

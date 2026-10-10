@@ -258,6 +258,7 @@ class Asset(Base):
     # PHASE 8 Asset Slot / 产品图库(JHWorld ProductGalleryImage 思想,不另建表)
     product_id: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
     caption: Mapped[str] = mapped_column(String(255), default="")
+    alt_text: Mapped[str] = mapped_column(String(255), default="")
     sort_order: Mapped[int] = mapped_column(Integer, default=0)
     is_primary: Mapped[bool] = mapped_column(Boolean, default=False)
 
@@ -277,6 +278,7 @@ class Asset(Base):
             "note": self.note,
             "product_id": self.product_id,
             "caption": self.caption,
+            "alt_text": self.alt_text,
             "sort_order": self.sort_order,
             "is_primary": self.is_primary,
             "created_at": self.created_at.isoformat() if self.created_at else None,
@@ -304,6 +306,7 @@ class SiteMarketVariant(Base):
     design_tokens: Mapped[dict] = mapped_column(JSON, default=dict)     # ThemeStyleSkill 输出
     visual_style_profile: Mapped[dict] = mapped_column(JSON, default=dict)
     asset_manifest: Mapped[dict] = mapped_column(JSON, default=dict)    # {slot: {url, source_type, provider}}
+    seo_metadata: Mapped[dict] = mapped_column(JSON, default=dict)      # title/description/canonical/hreflang
     status: Mapped[str] = mapped_column(String(16), default="draft")    # draft/published
     version_id: Mapped[str] = mapped_column(String(64), default="")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
@@ -320,6 +323,7 @@ class SiteMarketVariant(Base):
             "design_tokens": self.design_tokens,
             "visual_style_profile": self.visual_style_profile,
             "asset_manifest": self.asset_manifest,
+            "seo_metadata": self.seo_metadata,
             "status": self.status,
             "version_id": self.version_id,
             "created_at": self.created_at.isoformat() if self.created_at else None,
@@ -672,6 +676,7 @@ class SkillRun(Base):
     id: Mapped[str] = mapped_column(String(64), primary_key=True)
     tenant_id: Mapped[int] = mapped_column(ForeignKey("tenants.id"), index=True)
     site_id: Mapped[str] = mapped_column(String(64), default="", index=True)
+    user_id: Mapped[str] = mapped_column(String(64), default="")
     skill_id: Mapped[str] = mapped_column(String(64), index=True)
     skill_version: Mapped[str] = mapped_column(String(16), default="")
     input_json: Mapped[dict] = mapped_column(JSON, default=dict)
@@ -683,6 +688,7 @@ class SkillRun(Base):
     credits_used: Mapped[int] = mapped_column(Integer, default=0)
     error: Mapped[str] = mapped_column(Text, default="")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, index=True)
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     def to_dict(self) -> dict:
         return {

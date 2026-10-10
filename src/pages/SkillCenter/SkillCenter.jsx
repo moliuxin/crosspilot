@@ -6,6 +6,7 @@ import { useApp } from '../../app/store/AppContext'
 import { useEntitlement } from '../../app/store/useEntitlement'
 import Modal from '../../components/ui/Modal'
 import UsageDrawer from './UsageDrawer'
+import './skill-run.css'
 
 /** 把 Skill 价格文案（"1,200 Credits / 次"）解析成可扣减的数字。 */
 export function parseCost(price) {
@@ -70,6 +71,29 @@ export default function SkillCenter() {
     if (skill.action === 'view-localization') return navigate('/localization')
     // 付费 Skill：统一走付费弹窗（高级 Skill 触发付费门槛）
     if (skill.paid && !requireFeature(skillFeature(skill), `${skill.value} 当前为付费能力（${skill.billing} · ${skill.price}），升级套餐或单独开通后即可使用。`)) return
+
+    // PHASE 1:后端真源 Skill —— 真正调用 /api/skills/{id}/run,结果落 SkillRun
+    if (skill.real) {
+      setRunning(skill.id)
+      try {
+        const input = window.prompt(`运行「${skill.name}」\n输入 product_category(例:六轴协作机器人):`, '六轴协作机器人')
+        if (!input) return
+        const res = await api.runSkill(skill.id, { product_category: input })
+        setDetail({
+          ...skill,
+          value: skill.desc,
+          input: 'product_category: ' + input,
+          output: 'SkillRun ' + (res.run?.skill_id || '') + ' · ' + (res.ai_source === 'glm' ? `GLM ${res.model}` : '规则/模板(如实标注)'),
+          resultJson: res.output,
+        })
+        toast(`「${skill.name}」执行成功(SkillRun 已落库,刷新仍在)`, 'success')
+      } catch (e) {
+        toast(`执行失败:${e?.detail?.message || e?.message || '请重试'}`, 'warn')
+      } finally {
+        setRunning(null)
+      }
+      return
+    }
 
     const cost = parseCost(skill.price)
     setRunning(skill.id)
@@ -168,6 +192,12 @@ export default function SkillCenter() {
               <div><b>输出</b><span>{detail.output}</span></div>
               <div><b>计费</b><span>{detail.billing} · {detail.price}</span></div>
             </div>
+            {detail.resultJson && (
+              <div style={{ margin: '0 0 14px' }}>
+                <b style={{ fontSize: 13 }}>结构化结果(后端 SkillRun 持久化):</b>
+                <pre className="skill-result-json">{JSON.stringify(detail.resultJson, null, 2).slice(0, 2400)}</pre>
+              </div>
+            )}
             <div className="modal-grid">
               <div className="modal-option"><b>套餐包含</b><span>专业版可享部分额度</span></div>
               <div className="modal-option"><b>专业服务</b><span>由平台专业人员执行</span></div>

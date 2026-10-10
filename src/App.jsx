@@ -30,6 +30,7 @@ import SettingsPage from './pages/Settings/SettingsPage'
 import Onboarding from './pages/Onboarding/Onboarding'
 import Login from './pages/Login/Login'
 import GlobeIntro from './components/globe/GlobeIntro'
+import PublicMarketSite from './pages/PublicMarketSite'
 import { api } from './services/api'
 
 /** 旧路由 /editor 的兼容跳转：进入第一个站点的编辑器。 */
@@ -66,7 +67,9 @@ function Routed() {
     return (
       <Routes>
         <Route path="/intro" element={<GlobeIntro />} />
+      <Route path="/site/:slug/:market/" element={<PublicMarketSite />} />
         <Route path="/login" element={<Login />} />
+        <Route path="/site/:slug/:market/" element={<PublicMarketSite />} />
         <Route path="/templates" element={<PublicShell><TemplatesPage /></PublicShell>} />
         <Route path="/templates/:slug" element={<PublicShell><TemplatePreview /></PublicShell>} />
         <Route path="*" element={<Navigate to="/intro" replace />} />
@@ -80,6 +83,7 @@ function Routed() {
       <Route path="/login" element={<Navigate to="/" replace />} />
       {/* 地球首页：登录后仍可访问（Topbar「回到首页」指向这里） */}
       <Route path="/intro" element={<GlobeIntro />} />
+      <Route path="/site/:slug/:market/" element={<PublicMarketSite />} />
       <Route path="/onboarding" element={<Onboarding />} />
       <Route path="/templates/:slug" element={<TemplatePreview />} />
       <Route path="/" element={<AppLayout />}>

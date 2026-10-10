@@ -1,10 +1,25 @@
 import './site-blocks.css'
 
 /**
- * Schema-driven Site Blocks(PHASE 5)。
+ * Schema-driven Site Blocks(PHASE 5/6)。
  * 每个组件只消费 props(由后端 layout_schema 输出),禁止 dangerouslySetInnerHTML。
+ * 真实图片:props.image(Asset Slot 管线注入)→ <img> 懒加载/alt/错误回退/CSS 占位兜底。
  * ctx: { designTokens, market, productName, locale }
  */
+
+function SlotImage({ src, alt = '', className = 'sb-img', style }) {
+  if (!src) return null
+  return (
+    <img
+      src={src}
+      alt={alt}
+      className={className}
+      style={style}
+      loading="lazy"
+      onError={(e) => { e.currentTarget.style.display = 'none' }}
+    />
+  )
+}
 
 export function HeroIndustrial({ props = {}, variant = '', ctx }) {
   const t = ctx?.designTokens || {}
@@ -35,6 +50,7 @@ export function HeroIndustrial({ props = {}, variant = '', ctx }) {
           </button>
         )}
       </div>
+      <SlotImage src={props.image} alt={props.title || 'hero'} className="sb-img sb-hero-img" />
     </section>
   )
 }

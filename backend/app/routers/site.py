@@ -185,6 +185,8 @@ def _load_entity(db: Session, entity_type: str, entity_id: str, tenant_id: int):
         return scoped_get_or_none(db, models.Product, entity_id, tenant_id)
     if entity_type == "page":
         return scoped_get_or_none(db, models.Page, entity_id, tenant_id)
+    if entity_type == "market_variant":
+        return scoped_get_or_none(db, models.SiteMarketVariant, entity_id, tenant_id)
     return None
 
 
@@ -203,6 +205,21 @@ def _apply_patch(db: Session, entity_type: str, entity_id: str, patch: dict, ten
     """
     e = _load_entity(db, entity_type, entity_id, tenant_id)
     if e is None or not patch:
+        return
+    if entity_type == "market_variant":
+        # AI Brush 补丁:{"sections": {section_id: {props...}}} 合并进 layout_schema 对应 section
+        sections_patch = patch.pop("sections", None) or {}
+        schema = dict(e.layout_schema or {})
+        merged = list(schema.get("sections", []))
+        for i, sec in enumerate(merged):
+            sp = sections_patch.get(sec.get("id", ""))
+            if sp:
+                merged[i] = {**sec, "props": {**(sec.get("props") or {}), **(sp.get("props", sp))}}
+        schema["sections"] = merged
+        e.layout_schema = schema  # 整包重赋触发 JSON 变更追踪
+        for k, v in patch.items():
+            if hasattr(e, k) and k in ("content_json", "seo_metadata", "status"):
+                setattr(e, k, v)
         return
     if entity_type == "product":
         seo_patch = patch.pop("seo", None)
@@ -405,6 +422,10 @@ def _restore_snapshot(db: Session, entity_type: str, entity_id: str, snap: dict,
         raise HTTPException(status_code=404, detail=f"{entity_type} 不存在")
     if entity_type == "product":
         for k in ("name", "model", "category", "specs", "benefits", "applications", "images", "description", "seo", "seo_score", "geo_score", "localized_content"):
+            if k in snap:
+                setattr(e, k, snap[k])
+    elif entity_type == "market_variant":
+        for k in ("layout_schema", "content_json", "design_tokens", "visual_style_profile", "asset_manifest", "seo_metadata", "status"):
             if k in snap:
                 setattr(e, k, snap[k])
     else:  # page

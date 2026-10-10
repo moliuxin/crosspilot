@@ -689,6 +689,28 @@ export const api = {
     return data
   },
 
+  async getPublicSite(slug, market = '') {
+    const { ok, data, error } = await http('GET', `/public/site?site=${encodeURIComponent(slug)}${market ? `&market=${encodeURIComponent(market)}` : ''}`)
+    if (!ok) throw error
+    return data
+  },
+
+  async brushGenerate(siteId, market, sectionId, instruction) {
+    const { ok, data, error } = await http('POST', '/brush/generate', {
+      site_id: siteId, market, section_id: sectionId, instruction,
+    })
+    if (!ok) throw error
+    return data
+  },
+
+  async rollbackVersion(versionId, entityType, entityId) {
+    const { ok, data, error } = await http('POST', '/versions/rollback', {
+      version_id: versionId, entity_type: entityType, entity_id: entityId,
+    })
+    if (!ok) throw error
+    return data
+  },
+
   /* ---------------- Agent ---------------- */
 
   /** Agent 指令：自然语言字符串或结构化 patch */

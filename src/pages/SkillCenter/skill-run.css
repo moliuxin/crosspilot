@@ -1,0 +1,15 @@
+/* Skill 运行结果 JSON(PHASE 1) */
+.skill-result-json {
+  background: #0b1220;
+  color: #a5f3fc;
+  border: 1px solid #1e293b;
+  border-radius: 10px;
+  padding: 14px;
+  font-size: 12px;
+  line-height: 1.65;
+  max-height: 320px;
+  overflow: auto;
+  white-space: pre-wrap;
+  word-break: break-all;
+  margin-top: 8px;
+}
