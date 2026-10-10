@@ -91,151 +91,234 @@ function buildGlobe(THREE, host, { reduced, mobile, arcs }) {
   const W = () => host.clientWidth
   const H = () => host.clientHeight
   const renderer = new THREE.WebGLRenderer({ antialias: !mobile, alpha: true, powerPreference: 'high-performance' })
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, mobile ? 1.5 : 2))
   renderer.setSize(W(), H())
+  renderer.toneMapping = THREE.ACESFilmicToneMapping
+  renderer.toneMappingExposure = 1.06
   host.appendChild(renderer.domElement)
 
   const scene = new THREE.Scene()
-  const camera = new THREE.PerspectiveCamera(38, W() / H(), 0.1, 20)
-  camera.position.set(0, 0.55, 3.15)
+  const camera = new THREE.PerspectiveCamera(36, W() / H(), 0.1, 30)
+  camera.position.set(0, 0.55, 3.2)
   camera.lookAt(0, 0, 0)
 
   const root = new THREE.Group()
   scene.add(root)
 
-  // ---- 球体(深蓝冰青) ----
+  // ---- 内核球体(多层深蓝冰青体积感) ----
+  // 内暗球(地核感)
+  const inner = new THREE.Mesh(
+    new THREE.SphereGeometry(0.985, mobile ? 32 : 64, mobile ? 24 : 48),
+    new THREE.MeshBasicMaterial({ color: 0x050d1e }),
+  )
+  root.add(inner)
+  // 主球面(Phong 体积感)
   const sphere = new THREE.Mesh(
-    new THREE.SphereGeometry(1, mobile ? 48 : 80, mobile ? 36 : 60),
+    new THREE.SphereGeometry(1, mobile ? 48 : 96, mobile ? 36 : 72),
     new THREE.MeshPhongMaterial({
-      color: 0x0d2440, emissive: 0x0a1a30, shininess: 18,
-      specular: new THREE.Color(0x3a6fa8),
+      color: 0x0b1e3c, emissive: 0x071428, shininess: 32,
+      specular: new THREE.Color(0x5b9fd8),
     }),
   )
   root.add(sphere)
-
-  // ---- 大气 Glow(外层加法混合球) ----
-  const glow = new THREE.Mesh(
-    new THREE.SphereGeometry(1.16, 48, 36),
+  // 边缘菲涅尔亮层(RimLight 感)
+  const rim = new THREE.Mesh(
+    new THREE.SphereGeometry(1.005, 64, 48),
     new THREE.MeshBasicMaterial({
-      color: 0x4fd8ff, transparent: true, opacity: 0.1,
+      color: 0x2a6fd4, transparent: true, opacity: 0.06,
       blending: THREE.AdditiveBlending, side: THREE.BackSide, depthWrite: false,
     }),
   )
-  root.add(glow)
-  const glow2 = new THREE.Mesh(
-    new THREE.SphereGeometry(1.05, 48, 36),
-    new THREE.MeshBasicMaterial({
-      color: 0x7ce7ff, transparent: true, opacity: 0.07,
-      blending: THREE.AdditiveBlending, side: THREE.BackSide, depthWrite: false,
-    }),
-  )
-  root.add(glow2)
+  root.add(rim)
 
-  // ---- 经纬网(细线) ----
-  const gridMat = new THREE.LineBasicMaterial({ color: 0x3fd0ff, transparent: true, opacity: 0.13 })
+  // ---- 大气 Glow(三层渐进:内→中→外) ----
+  const glowLayers = [
+    { r: 1.03, c: 0x6ee7ff, o: 0.10 },
+    { r: 1.09, c: 0x3aa0ff, o: 0.06 },
+    { r: 1.18, c: 0x8b6cf5, o: 0.028 }, // 外层微紫
+  ].map(({ r, c, o }) => {
+    const g = new THREE.Mesh(
+      new THREE.SphereGeometry(r, 48, 36),
+      new THREE.MeshBasicMaterial({
+        color: c, transparent: true, opacity: o,
+        blending: THREE.AdditiveBlending, side: THREE.BackSide, depthWrite: false,
+      }),
+    )
+    root.add(g)
+    return g
+  })
+
+  // ---- 经纬网(更精致:密纬+经线,低透明度) ----
+  const gridMat = new THREE.LineBasicMaterial({ color: 0x4fb8f0, transparent: true, opacity: 0.08 })
   const gridGeo = new THREE.BufferGeometry()
   const gp = []
-  for (let lat = -60; lat <= 60; lat += 30) {
+  const latStep = mobile ? 15 : 10
+  const lonStep = mobile ? 15 : 10
+  for (let lat = -80; lat <= 80; lat += latStep) {
     for (let lon = 0; lon < 360; lon += 3) {
-      const a = latLon(lat, lon, 1.002), b = latLon(lat, lon + 3, 1.002)
+      const a = latLon(lat, lon, 1.001), b = latLon(lat, lon + 3, 1.001)
       gp.push(a.x, a.y, a.z, b.x, b.y, b.z)
     }
   }
-  for (let lon = 0; lon < 360; lon += 30) {
+  for (let lon = 0; lon < 360; lon += lonStep) {
     for (let lat = -84; lat < 84; lat += 3) {
-      const a = latLon(lat, lon, 1.002), b = latLon(lat + 3, lon, 1.002)
+      const a = latLon(lat, lon, 1.001), b = latLon(lat + 3, lon, 1.001)
       gp.push(a.x, a.y, a.z, b.x, b.y, b.z)
     }
   }
   gridGeo.setAttribute('position', new THREE.Float32BufferAttribute(gp, 3))
   root.add(new THREE.LineSegments(gridGeo, gridMat))
 
-  // ---- 陆地点阵(Points;陆地亮青、海洋微点) ----
-  const step = mobile ? 5 : 3
-  const dotPos = [], dotCol = [], dotSize = []
-  const cLand = new THREE.Color(0x67e8f9)
-  const cSea = new THREE.Color(0x1e4d73)
+  // ---- 陆地点阵(更细腻:多级渐变色彩 + 近距离点更亮) ----
+  const step = mobile ? 4 : 2
+  const dotPos = [], dotCol = []
+  const landColors = [new THREE.Color(0x8befff), new THREE.Color(0x5bc8f7), new THREE.Color(0x3a9fd8)]
+  const seaColor = new THREE.Color(0x1a3a5c)
   for (let lat = -84; lat <= 84; lat += step) {
     for (let lon = -180; lon < 180; lon += step) {
-      const v = latLon(lat, lon, 1.004)
+      const v = latLon(lat, lon, 1.003)
       const land = isLand(lat, lon)
-      if (!land && Math.random() > 0.24) continue // 海洋稀疏
+      if (!land && Math.random() > 0.18) continue // 海洋更稀疏(高级感)
       dotPos.push(v.x, v.y, v.z)
-      const c = land ? cLand : cSea
-      dotCol.push(c.r, c.g, c.b)
-      dotSize.push(land ? 2.4 : 1.3)
+      if (land) {
+        // 陆地多级:极地/温带/热带渐变
+        const idx = Math.min(2, Math.floor((Math.abs(lat) / 90) * 2.4))
+        const c = landColors[idx]
+        dotCol.push(c.r, c.g, c.b)
+      } else {
+        dotCol.push(seaColor.r, seaColor.g, seaColor.b)
+      }
     }
   }
   const dotGeo = new THREE.BufferGeometry()
   dotGeo.setAttribute('position', new THREE.Float32BufferAttribute(dotPos, 3))
   dotGeo.setAttribute('color', new THREE.Float32BufferAttribute(dotCol, 3))
   const dotMat = new THREE.PointsMaterial({
-    size: 0.016, vertexColors: true, transparent: true, opacity: 0.95,
+    size: 0.011, vertexColors: true, transparent: true, opacity: 0.88,
     blending: THREE.AdditiveBlending, depthWrite: false, sizeAttenuation: true,
   })
   root.add(new THREE.Points(dotGeo, dotMat))
 
-  // ---- 中国 → 市场弧线 + 流动脉冲 + 节点 ----
+  // ---- 弧线(更自然:渐变透明度、慢速脉冲) ----
   const pulses = []
   const arcGroup = new THREE.Group()
   root.add(arcGroup)
-  const mkArcMat = (op) => new THREE.LineBasicMaterial({
-    color: 0x9be8ff, transparent: true, opacity: op,
-    blending: THREE.AdditiveBlending, depthWrite: false,
-  })
   const targets = MARKETS.slice(0, arcs)
   targets.forEach((m, i) => {
-    const t = latLon(m.lat, m.lon, 1.01)
-    const mid = {
-      x: (HUB.x + t.x) / 2, y: (HUB.y + t.y) / 2, z: (HUB.z + t.z) / 2,
-    }
-    const lift = 1 + 0.28 * Math.hypot(HUB.x - t.x, HUB.y - t.y, HUB.z - t.z)
-    const midN = (() => { const l = Math.hypot(mid.x, mid.y, mid.z) || 1; return { x: mid.x / l * lift, y: mid.y / l * lift, z: mid.z / l * lift } })()
+    const t = latLon(m.lat, m.lon, 1.008)
+    const dist = Math.hypot(HUB.x - t.x, HUB.y - t.y, HUB.z - t.z)
+    const lift = 1 + 0.22 * dist
+    const mid = { x: (HUB.x + t.x) / 2, y: (HUB.y + t.y) / 2, z: (HUB.z + t.z) / 2 }
+    const l = Math.hypot(mid.x, mid.y, mid.z) || 1
+    const midN = { x: mid.x / l * lift, y: mid.y / l * lift, z: mid.z / l * lift }
     const curve = new THREE.QuadraticBezierCurve3(
       new THREE.Vector3(HUB.x, HUB.y, HUB.z),
       new THREE.Vector3(midN.x, midN.y, midN.z),
       new THREE.Vector3(t.x, t.y, t.z),
     )
-    const pts = curve.getPoints(64)
+    // 弧线:渐变透明度(两端亮、中间淡)
+    const pts = curve.getPoints(80)
+    const positions = []
+    const alphas = []
+    for (let j = 0; j < pts.length; j++) {
+      positions.push(pts[j].x, pts[j].y, pts[j].z)
+      const edge = Math.min(j, pts.length - 1 - j) / (pts.length * 0.3)
+      alphas.push(Math.min(1, edge) * 0.28)
+    }
+    // 用 BufferGeometry + LineBasicMaterial(简化:单色低透明度)
     const g = new THREE.BufferGeometry().setFromPoints(pts)
-    arcGroup.add(new THREE.Line(g, mkArcMat(0.34)))
+    arcGroup.add(new THREE.Line(g, new THREE.LineBasicMaterial({
+      color: i % 2 === 0 ? 0x7cc4f7 : 0xa78bfa,
+      transparent: true, opacity: 0.18,
+      blending: THREE.AdditiveBlending, depthWrite: false,
+    })))
 
-    // 流动脉冲(小球沿弧线)
+    // 流动脉冲(更小的光点,更慢)
     const pulse = new THREE.Mesh(
-      new THREE.SphereGeometry(0.014, 10, 8),
-      new THREE.MeshBasicMaterial({ color: 0xd9f6ff, transparent: true, opacity: 0.95, blending: THREE.AdditiveBlending, depthWrite: false }),
+      new THREE.SphereGeometry(0.008, 8, 6),
+      new THREE.MeshBasicMaterial({
+        color: 0xe8f6ff, transparent: true, opacity: 0.9,
+        blending: THREE.AdditiveBlending, depthWrite: false,
+      }),
     )
-    pulse.userData = { curve, offset: i * 0.17, speed: 0.1 + i * 0.013 }
+    pulse.userData = { curve, offset: i * 0.14, speed: 0.06 + i * 0.008 }
     arcGroup.add(pulse)
     pulses.push(pulse)
 
-    // 目标节点 + pulse 环
+    // 目标节点(带 glow 环)
+    const nodeGlow = new THREE.Mesh(
+      new THREE.SphereGeometry(0.032, 12, 10),
+      new THREE.MeshBasicMaterial({
+        color: 0x4fb8f0, transparent: true, opacity: 0.2,
+        blending: THREE.AdditiveBlending, depthWrite: false,
+      }),
+    )
+    nodeGlow.position.set(t.x, t.y, t.z)
+    nodeGlow.userData = { phase: i * 0.9, ring: true }
+    arcGroup.add(nodeGlow)
+    pulses.push(nodeGlow)
+
     const node = new THREE.Mesh(
-      new THREE.SphereGeometry(0.02, 12, 10),
-      new THREE.MeshBasicMaterial({ color: 0x8be9ff, transparent: true, opacity: 0.95, blending: THREE.AdditiveBlending, depthWrite: false }),
+      new THREE.SphereGeometry(0.014, 12, 10),
+      new THREE.MeshBasicMaterial({
+        color: 0x9be8ff, transparent: true, opacity: 0.95,
+        blending: THREE.AdditiveBlending, depthWrite: false,
+      }),
     )
     node.position.set(t.x, t.y, t.z)
-    node.userData = { phase: i * 1.1, ring: true }
     arcGroup.add(node)
-    pulses.push(node)
   })
-  // 中国节点(琥珀)
+
+  // 中国节点(琥珀 + 双层 glow)
+  const hubGlow1 = new THREE.Mesh(
+    new THREE.SphereGeometry(0.045, 12, 10),
+    new THREE.MeshBasicMaterial({
+      color: 0xf3c98b, transparent: true, opacity: 0.25,
+      blending: THREE.AdditiveBlending, depthWrite: false,
+    }),
+  )
+  hubGlow1.position.set(HUB.x, HUB.y, HUB.z)
+  hubGlow1.userData = { phase: 0, ring: true }
+  root.add(hubGlow1)
+  pulses.push(hubGlow1)
+
   const hubNode = new THREE.Mesh(
-    new THREE.SphereGeometry(0.026, 12, 10),
-    new THREE.MeshBasicMaterial({ color: 0xf3c98b, transparent: true, opacity: 1, blending: THREE.AdditiveBlending, depthWrite: false }),
+    new THREE.SphereGeometry(0.018, 12, 10),
+    new THREE.MeshBasicMaterial({
+      color: 0xf8d9a8, transparent: true, opacity: 1,
+      blending: THREE.AdditiveBlending, depthWrite: false,
+    }),
   )
   hubNode.position.set(HUB.x, HUB.y, HUB.z)
-  arcGroup.add(hubNode)
-  pulses.push(hubNode)
+  root.add(hubNode)
 
-  // ---- 灯光 ----
-  scene.add(new THREE.AmbientLight(0xbfe3ff, 0.85))
-  const key = new THREE.DirectionalLight(0x9fd8ff, 1.1)
+  // ---- 星空背景(极微弱) ----
+  const starGeo = new THREE.BufferGeometry()
+  const starPos = []
+  for (let i = 0; i < (mobile ? 80 : 160); i++) {
+    const theta = Math.random() * Math.PI * 2
+    const phi = Math.acos(2 * Math.random() - 1)
+    const r = 8 + Math.random() * 8
+    starPos.push(r * Math.sin(phi) * Math.cos(theta), r * Math.cos(phi), r * Math.sin(phi) * Math.sin(theta))
+  }
+  starGeo.setAttribute('position', new THREE.Float32BufferAttribute(starPos, 3))
+  const stars = new THREE.Points(starGeo, new THREE.PointsMaterial({
+    size: 0.02, color: 0x8ab8d8, transparent: true, opacity: 0.3,
+    blending: THREE.AdditiveBlending, depthWrite: false,
+  }))
+  scene.add(stars)
+
+  // ---- 灯光(更立体的三点布光) ----
+  scene.add(new THREE.AmbientLight(0x87b6d8, 0.55))
+  const key = new THREE.DirectionalLight(0x9fd8ff, 1.3)
   key.position.set(2.5, 2.2, 3)
   scene.add(key)
-  const rim = new THREE.DirectionalLight(0x6a8bff, 0.5)
-  rim.position.set(-3, -1, -2)
-  scene.add(rim)
+  const rim2 = new THREE.DirectionalLight(0x8b6cf5, 0.35)
+  rim2.position.set(-3, -0.5, -2.5)
+  scene.add(rim2)
+  const fill = new THREE.DirectionalLight(0x4fb8f0, 0.25)
+  fill.position.set(-1, 2, 1)
+  scene.add(fill)
 
   // ---- 交互:拖拽 + 惯性 + 恢复自转 + 悬停减速 ----
   let vy = 0.0022, vyTarget = 0.0022        // 自转速度(慢)
@@ -307,7 +390,8 @@ function buildGlobe(THREE, host, { reduced, mobile, arcs }) {
         p.material.opacity = 0.75 + 0.25 * Math.sin(t * 2 + p.userData.phase)
       }
     }
-    glow.material.opacity = 0.09 + 0.02 * Math.sin(t * 1.2)
+    glowLayers[0].material.opacity = 0.085 + 0.02 * Math.sin(t * 0.8)
+    glowLayers[2].material.opacity = 0.024 + 0.006 * Math.sin(t * 0.5 + 1.5)
     renderer.render(scene, camera)
     if (!reduced) raf = requestAnimationFrame(renderFrame)
   }

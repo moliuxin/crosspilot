@@ -6,9 +6,9 @@
   --nh-dim: #4d6482;
   --nh-line: #d8e6f5;
   background:
-    radial-gradient(1100px 600px at 78% 8%, rgba(120, 190, 255, 0.20), transparent 60%),
-    radial-gradient(900px 520px at 10% 22%, rgba(158, 132, 255, 0.10), transparent 55%),
-    linear-gradient(180deg, #f3f8ff 0%, #eef5fd 34%, #f7fafE 100%);
+    radial-gradient(1200px 700px at 76% 6%, rgba(140, 200, 255, 0.14), transparent 62%),
+    radial-gradient(900px 520px at 8% 18%, rgba(158, 132, 255, 0.06), transparent 55%),
+    linear-gradient(180deg, #f6faff 0%, #f0f6fd 30%, #f8fbff 100%);
   color: var(--nh-ink);
   min-height: 100vh;
   font-family: system-ui, 'Microsoft YaHei', sans-serif;
@@ -93,10 +93,13 @@
 .g3d-host { position: absolute; inset: 0; }
 .g3d-host canvas { width: 100% !important; height: 100% !important; }
 .nh-globe-tag {
-  position: absolute; font-size: 12px; font-weight: 700; color: #173a66;
-  background: rgba(255, 255, 255, 0.85); border: 1px solid rgba(29, 95, 214, 0.25);
-  padding: 6px 12px; border-radius: 999px; backdrop-filter: blur(6px);
-  box-shadow: 0 6px 18px rgba(23, 58, 102, 0.14);
+  position: absolute; font-size: 11.5px; font-weight: 700; color: #122e56;
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid rgba(29, 95, 214, 0.18);
+  padding: 7px 14px; border-radius: 10px;
+  backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+  box-shadow: 0 8px 24px rgba(15, 45, 95, 0.10), inset 0 1px 0 rgba(255,255,255,0.8);
+  letter-spacing: 0.02em;
   animation: nh-float 5s ease-in-out infinite;
 }
 .nh-globe-tag.t-cn { left: 6%; top: 16%; }
@@ -135,15 +138,21 @@
 .nh-sec-sub { font-size: 14.5px; color: var(--nh-dim); line-height: 1.85; }
 .nh-points { list-style: none; padding: 0; margin: 18px 0 22px; display: grid; gap: 10px; }
 .nh-points li {
-  font-size: 14px; color: #1d3a63; padding: 10px 14px; border-radius: 10px;
-  background: rgba(255, 255, 255, 0.72); border: 1px solid var(--nh-line);
+  font-size: 13.5px; color: #1d3a63; padding: 10px 14px; border-radius: 10px;
+  background: rgba(255, 255, 255, 0.65); border: 1px solid rgba(29, 95, 214, 0.10);
+  backdrop-filter: blur(6px);
 }
 .nh-note { font-size: 12px; color: #6b83a3; margin: -8px 0 14px; }
 .nh-shot {
-  margin: 0; border-radius: 16px; overflow: hidden;
-  border: 1px solid rgba(29, 95, 214, 0.16);
-  background: rgba(255, 255, 255, 0.8);
-  box-shadow: 0 30px 70px rgba(15, 45, 95, 0.16);
+  margin: 0; border-radius: 14px; overflow: hidden;
+  border: 1px solid rgba(29, 95, 214, 0.12);
+  background: rgba(255, 255, 255, 0.85);
+  box-shadow: 0 24px 60px rgba(15, 45, 95, 0.12), 0 4px 16px rgba(29, 95, 214, 0.06);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.nh-shot:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 30px 70px rgba(15, 45, 95, 0.16), 0 6px 20px rgba(29, 95, 214, 0.10);
 }
 .nh-shot img { display: block; width: 100%; }
 .nh-shot figcaption {
