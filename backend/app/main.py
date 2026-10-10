@@ -14,6 +14,10 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from .config import get_settings
 from .database import Base, SessionLocal, engine
+
+# Website Intelligence 模型(确保 create_all 建表)
+from .website_intelligence import models as _wi_models  # noqa: F401
+
 from .routers import (
     agent,
     ai as ai_router,
