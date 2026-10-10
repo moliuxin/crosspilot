@@ -1,0 +1,234 @@
+/* 全国赛首页 —— 浅蓝白高端科技风(P0-1/2) */
+.nh {
+  --nh-blue: #1d5fd6;
+  --nh-cyan: #0ea5c9;
+  --nh-ink: #0b1f3a;
+  --nh-dim: #4d6482;
+  --nh-line: #d8e6f5;
+  background:
+    radial-gradient(1100px 600px at 78% 8%, rgba(120, 190, 255, 0.20), transparent 60%),
+    radial-gradient(900px 520px at 10% 22%, rgba(158, 132, 255, 0.10), transparent 55%),
+    linear-gradient(180deg, #f3f8ff 0%, #eef5fd 34%, #f7fafE 100%);
+  color: var(--nh-ink);
+  min-height: 100vh;
+  font-family: system-ui, 'Microsoft YaHei', sans-serif;
+}
+
+/* ---------- NAV ---------- */
+.nh-nav {
+  position: sticky; top: 0; z-index: 50;
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 16px 46px;
+  background: rgba(243, 248, 255, 0.82);
+  backdrop-filter: blur(14px);
+  border-bottom: 1px solid rgba(29, 95, 214, 0.10);
+}
+.nh-brand { display: flex; align-items: center; gap: 12px; }
+.nh-brand .mark {
+  width: 38px; height: 38px; border-radius: 11px; display: grid; place-items: center;
+  font-size: 19px; font-weight: 800; color: #fff;
+  background: linear-gradient(135deg, #1d5fd6, #7aa7ff 55%, #9e84ff);
+  box-shadow: 0 6px 18px rgba(29, 95, 214, 0.35);
+}
+.nh-brand strong { display: block; font-size: 16.5px; letter-spacing: 0.04em; }
+.nh-brand span { display: block; font-size: 11px; color: var(--nh-dim); }
+.nh-nav-actions { display: flex; gap: 10px; align-items: center; }
+.nh-link {
+  background: none; border: none; cursor: pointer; font-size: 13.5px;
+  color: #2c4a75; padding: 8px 12px; border-radius: 8px;
+}
+.nh-link:hover { background: rgba(29, 95, 214, 0.08); }
+.nh-btn {
+  border: none; cursor: pointer; border-radius: 10px; font-weight: 700; font-size: 14px;
+  padding: 11px 22px; color: #fff;
+  background: linear-gradient(92deg, #1d5fd6, #3d8bff 60%, #7aa7ff);
+  box-shadow: 0 10px 26px rgba(29, 95, 214, 0.32);
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+.nh-btn:hover { transform: translateY(-1px); box-shadow: 0 14px 32px rgba(29, 95, 214, 0.42); }
+.nh-btn.ghost {
+  background: rgba(255, 255, 255, 0.75); color: #1d5fd6;
+  border: 1px solid rgba(29, 95, 214, 0.35); box-shadow: none;
+}
+.nh-btn.xl { padding: 14px 30px; font-size: 15.5px; border-radius: 12px; }
+
+/* ---------- HERO ---------- */
+.nh-hero {
+  position: relative; overflow: hidden;
+  display: grid; grid-template-columns: 1.05fr 0.95fr; gap: 30px; align-items: center;
+  max-width: 1280px; margin: 0 auto; padding: 60px 46px 30px;
+}
+.nh-hero::before {
+  content: ''; position: absolute; inset: 0; pointer-events: none;
+  background-image:
+    linear-gradient(rgba(29, 95, 214, 0.055) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(29, 95, 214, 0.05) 1px, transparent 1px);
+  background-size: 54px 54px;
+  -webkit-mask-image: radial-gradient(ellipse 85% 70% at 55% 40%, #000 30%, transparent 75%);
+  mask-image: radial-gradient(ellipse 85% 70% at 55% 40%, #000 30%, transparent 75%);
+}
+.nh-eyebrow {
+  font-size: 11.5px; letter-spacing: 0.3em; font-weight: 700; color: #1d5fd6;
+  margin-bottom: 14px;
+}
+.nh-hero h1 {
+  font-size: clamp(38px, 5vw, 60px); line-height: 1.1; margin: 0 0 14px;
+  letter-spacing: -0.015em;
+  background: linear-gradient(96deg, #0b1f3a 20%, #1d5fd6 70%, #0ea5c9 100%);
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+.nh-sub { font-size: 17px; font-weight: 700; color: #23406b; margin: 0 0 12px; }
+.nh-desc { font-size: 14.5px; line-height: 1.9; color: var(--nh-dim); max-width: 480px; }
+.nh-cta-row { display: flex; gap: 14px; margin: 26px 0 22px; flex-wrap: wrap; }
+.nh-cta-row.center { justify-content: center; }
+.nh-chips { display: flex; gap: 9px; flex-wrap: wrap; }
+.nh-chips span {
+  font-size: 11.5px; font-weight: 700; color: #23406b;
+  border: 1px solid rgba(29, 95, 214, 0.25); background: rgba(255, 255, 255, 0.7);
+  padding: 6px 13px; border-radius: 999px;
+}
+
+/* 3D 地球容器 */
+.nh-hero-globe { position: relative; height: clamp(380px, 46vw, 560px); }
+.g3d-host { position: absolute; inset: 0; }
+.g3d-host canvas { width: 100% !important; height: 100% !important; }
+.nh-globe-tag {
+  position: absolute; font-size: 12px; font-weight: 700; color: #173a66;
+  background: rgba(255, 255, 255, 0.85); border: 1px solid rgba(29, 95, 214, 0.25);
+  padding: 6px 12px; border-radius: 999px; backdrop-filter: blur(6px);
+  box-shadow: 0 6px 18px rgba(23, 58, 102, 0.14);
+  animation: nh-float 5s ease-in-out infinite;
+}
+.nh-globe-tag.t-cn { left: 6%; top: 16%; }
+.nh-globe-tag.t-en { right: 4%; top: 30%; animation-delay: 1.2s; }
+.nh-globe-tag.t-ru { left: 14%; bottom: 18%; animation-delay: 2.2s; }
+@keyframes nh-float { 50% { transform: translateY(-7px); } }
+.nh-globe-hint {
+  position: absolute; right: 8%; bottom: 6%; font-size: 11px; color: #5b7699;
+}
+/* WebGL 回退 */
+.g3d-fallback { position: absolute; inset: 0; display: grid; place-items: center; }
+.g3d-fallback-ball {
+  width: 68%; aspect-ratio: 1; border-radius: 50%;
+  background: radial-gradient(circle at 34% 30%, #7fd4ff 0%, #1d5fd6 42%, #0b1f3a 100%);
+  box-shadow: 0 0 80px rgba(60, 160, 255, 0.45), inset -30px -24px 80px rgba(4, 16, 36, 0.8);
+}
+.g3d-fallback-node { position: absolute; width: 10px; height: 10px; border-radius: 50%; background: #9be8ff; box-shadow: 0 0 14px #7aa7ff; }
+.g3d-fallback-node.n1 { left: 24%; top: 30%; } .g3d-fallback-node.n2 { right: 26%; top: 40%; } .g3d-fallback-node.n3 { left: 46%; bottom: 24%; }
+
+/* ---------- 模块通用 ---------- */
+.nh-sec { max-width: 1280px; margin: 0 auto; padding: 70px 46px; }
+.nh-sec.alt {
+  max-width: none;
+  background: linear-gradient(180deg, rgba(233, 242, 255, 0.75), rgba(233, 242, 255, 0.35));
+  border-top: 1px solid rgba(29, 95, 214, 0.08);
+  border-bottom: 1px solid rgba(29, 95, 214, 0.08);
+}
+.nh-sec.alt > .nh-row { max-width: 1280px; margin: 0 auto; }
+.nh-row { display: grid; grid-template-columns: 0.9fr 1.1fr; gap: 54px; align-items: center; }
+.nh-row.rev { grid-template-columns: 1.1fr 0.9fr; }
+.nh-row.rev .nh-copy { order: 2; }
+.nh-copy h2 {
+  font-size: clamp(26px, 3.2vw, 38px); line-height: 1.22; margin: 0 0 14px;
+  letter-spacing: -0.01em; color: #0e2340;
+}
+.nh-sec-sub { font-size: 14.5px; color: var(--nh-dim); line-height: 1.85; }
+.nh-points { list-style: none; padding: 0; margin: 18px 0 22px; display: grid; gap: 10px; }
+.nh-points li {
+  font-size: 14px; color: #1d3a63; padding: 10px 14px; border-radius: 10px;
+  background: rgba(255, 255, 255, 0.72); border: 1px solid var(--nh-line);
+}
+.nh-note { font-size: 12px; color: #6b83a3; margin: -8px 0 14px; }
+.nh-shot {
+  margin: 0; border-radius: 16px; overflow: hidden;
+  border: 1px solid rgba(29, 95, 214, 0.16);
+  background: rgba(255, 255, 255, 0.8);
+  box-shadow: 0 30px 70px rgba(15, 45, 95, 0.16);
+}
+.nh-shot img { display: block; width: 100%; }
+.nh-shot figcaption {
+  font-size: 11.5px; color: #6b83a3; padding: 10px 16px;
+  border-top: 1px solid var(--nh-line); background: rgba(247, 250, 254, 0.9);
+}
+
+/* ---------- 三市场模块 ---------- */
+.nh-markets { text-align: center; }
+.nh-sec-head { max-width: 760px; margin: 0 auto 40px; }
+.nh-sec-head h2, .nh-markets h2 {
+  font-size: clamp(26px, 3.4vw, 40px); margin: 0 0 12px; color: #0e2340; line-height: 1.2;
+}
+.nh-mk3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; text-align: left; }
+.nh-mk3-card {
+  margin: 0; border-radius: 14px; overflow: hidden; background: #fff;
+  border: 1px solid var(--nh-line); box-shadow: 0 18px 44px rgba(15, 45, 95, 0.12);
+  transition: transform 0.18s;
+}
+.nh-mk3-card:hover { transform: translateY(-5px); }
+.nh-mk3-flag {
+  padding: 11px 16px; font-size: 13px; font-weight: 800; color: #fff;
+  background: linear-gradient(92deg, #1d5fd6, #7aa7ff);
+}
+.nh-mk3-card:nth-child(3) .nh-mk3-flag { background: linear-gradient(92deg, #0e7490, #22d3ee); }
+.nh-mk3-card img { width: 100%; display: block; aspect-ratio: 16 / 11; object-fit: cover; object-position: top; }
+.nh-mk3-card ul { list-style: none; margin: 0; padding: 14px 16px; display: grid; gap: 6px; }
+.nh-mk3-card li { font-size: 12.5px; color: #374f74; }
+.nh-mk3-card li::before { content: '· '; color: #1d5fd6; font-weight: 800; }
+.nh-dims {
+  display: flex; gap: 9px; flex-wrap: wrap; justify-content: center; margin: 26px 0 8px;
+}
+.nh-dims span {
+  font-size: 11.5px; font-weight: 700; color: #1d5fd6;
+  border: 1px dashed rgba(29, 95, 214, 0.4); border-radius: 8px; padding: 6px 12px;
+  background: rgba(255, 255, 255, 0.7);
+}
+.nh-dims em { width: 100%; font-size: 11.5px; color: #6b83a3; font-style: normal; }
+.nh-sec-cta { margin-top: 20px; }
+
+/* ---------- RFQ 双图 ---------- */
+.nh-shots-stack { display: grid; gap: 14px; }
+.nh-shots-stack img {
+  border-radius: 14px; border: 1px solid var(--nh-line);
+  box-shadow: 0 20px 46px rgba(15, 45, 95, 0.14); display: block; width: 100%;
+}
+
+/* ---------- FINAL ---------- */
+.nh-final {
+  text-align: center; padding: 110px 46px 90px;
+  background:
+    radial-gradient(700px 380px at 50% 62%, rgba(122, 167, 255, 0.16), transparent 70%),
+    linear-gradient(180deg, rgba(238, 245, 253, 0.4), rgba(243, 248, 255, 0.9));
+}
+.nh-final h2 {
+  font-size: clamp(30px, 4.4vw, 50px); line-height: 1.18; margin: 0 0 30px;
+  background: linear-gradient(96deg, #0b1f3a 25%, #1d5fd6 75%);
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+.nh-foot {
+  display: flex; justify-content: space-between; gap: 14px; flex-wrap: wrap;
+  padding: 20px 46px 30px; border-top: 1px solid rgba(29, 95, 214, 0.1);
+  font-size: 11.5px; color: #6b83a3;
+}
+
+/* 登录弹窗沿用公共体系,轻改色 */
+.nh-auth .gp-auth-head .mark {
+  background: linear-gradient(135deg, #1d5fd6, #7aa7ff);
+  box-shadow: 0 0 16px rgba(29, 95, 214, 0.4);
+}
+
+/* ---------- 响应式 ---------- */
+@media (max-width: 1020px) {
+  .nh-hero { grid-template-columns: 1fr; padding-top: 40px; }
+  .nh-hero-globe { height: 400px; order: -1; }
+  .nh-row, .nh-row.rev { grid-template-columns: 1fr; gap: 26px; }
+  .nh-row.rev .nh-copy { order: 0; }
+  .nh-mk3 { grid-template-columns: 1fr; }
+}
+@media (max-width: 640px) {
+  .nh-nav, .nh-sec, .nh-hero { padding-left: 20px; padding-right: 20px; }
+  .nh-nav { flex-wrap: wrap; gap: 8px; }
+  .nh-hero-globe { height: 320px; }
+  .nh-btn.xl { width: 100%; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .nh-globe-tag, .nh-mk3-card { animation: none !important; transition: none !important; }
+}
