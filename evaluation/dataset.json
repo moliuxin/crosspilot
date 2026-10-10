@@ -1,0 +1,101 @@
+{
+  "meta": {
+    "description": "CrossPilot National Evaluation Benchmark — Synthetic Test Set",
+    "version": "1.0.0",
+    "note": "Synthetic benchmark data for algorithm comparison. Not real customer data.",
+    "metrics_definitions": {
+      "market_differentiation": "Jaccard distance between section_order lists of market pairs (0=identical, 1=completely different)",
+      "required_field_completeness": "Fraction of required page sections present (hero, products, rfq, trust)",
+      "procurement_coverage": "Fraction of procurement fields mentioned (moq, lead_time, warranty, certification, oem)",
+      "cta_compliance": "CTA text belongs to market lexicon AND no e-commerce terms",
+      "structural_diversity": "Number of unique section types across all markets",
+      "layout_appropriateness": "Market-specific expectations met (e.g. RU has key_specs, EN has benefits, CN has factory)"
+    }
+  },
+  "test_cases": [
+    {
+      "id": "tc_001",
+      "product_category": "10kg collaborative robot",
+      "product_category_zh": "六轴协作机器人",
+      "industry": "industrial_robotics",
+      "target_buyer": "automation engineer",
+      "target_markets": ["zh-CN", "en-US", "ru-RU"],
+      "difficulty": "standard",
+      "expected": {
+        "min_sections": 5,
+        "required_sections": ["hero", "products", "rfq"],
+        "procurement_keywords": ["lead_time", "warranty", "certification"]
+      }
+    },
+    {
+      "id": "tc_002",
+      "product_category": "industrial water pump",
+      "product_category_zh": "工业水泵",
+      "industry": "industrial_machinery",
+      "target_buyer": "procurement manager",
+      "target_markets": ["zh-CN", "en-US"],
+      "difficulty": "standard",
+      "expected": {
+        "min_sections": 4,
+        "required_sections": ["hero", "products", "rfq"],
+        "procurement_keywords": ["moq", "lead_time", "certification"]
+      }
+    },
+    {
+      "id": "tc_003",
+      "product_category": "LED high bay light",
+      "product_category_zh": "LED工矿灯",
+      "industry": "electronics",
+      "target_buyer": "system integrator",
+      "target_markets": ["en-US", "ru-RU"],
+      "difficulty": "standard",
+      "expected": {
+        "min_sections": 4,
+        "required_sections": ["hero", "products", "rfq"],
+        "procurement_keywords": ["certification", "warranty"]
+      }
+    },
+    {
+      "id": "tc_004",
+      "product_category": "solar panel mounting system",
+      "product_category_zh": "光伏支架",
+      "industry": "photovoltaic",
+      "target_buyer": "EPC engineer",
+      "target_markets": ["zh-CN", "en-US", "ru-RU"],
+      "difficulty": "hard",
+      "expected": {
+        "min_sections": 5,
+        "required_sections": ["hero", "products", "certifications", "rfq"],
+        "procurement_keywords": ["lead_time", "certification", "warranty", "oem"]
+      }
+    },
+    {
+      "id": "tc_005",
+      "product_category": "ceramic floor tile",
+      "product_category_zh": "建筑陶瓷",
+      "industry": "building_materials",
+      "target_buyer": "distributor",
+      "target_markets": ["en-US", "ru-RU"],
+      "difficulty": "standard",
+      "expected": {
+        "min_sections": 4,
+        "required_sections": ["hero", "products", "rfq"],
+        "procurement_keywords": ["moq", "lead_time"]
+      }
+    },
+    {
+      "id": "tc_006",
+      "product_category": "AI inference server",
+      "product_category_zh": "AI推理服务器",
+      "industry": "ai_hardware",
+      "target_buyer": "solution architect",
+      "target_markets": ["zh-CN", "en-US"],
+      "difficulty": "hard",
+      "expected": {
+        "min_sections": 5,
+        "required_sections": ["hero", "key_specs", "products", "rfq"],
+        "procurement_keywords": ["warranty", "certification", "lead_time"]
+      }
+    }
+  ]
+}
