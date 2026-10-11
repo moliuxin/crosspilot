@@ -82,6 +82,7 @@ export function ProductGrid({ props = {}, ctx }) {
       <div className="sb-grid sb-grid-3">
         {(items.length ? items : [1, 2, 3].map((n) => ({ name: `Series ${n}` }))).map((p, i) => (
           <div className="sb-card sb-product" key={i} style={{ borderColor: t.border || '#e3e8ef' }}>
+            <SlotImage src={p.image || props.image} alt={p.name || p.title || 'product'} className="sb-img sb-media-img" />
             <div className="sb-media" style={{ background: (t.primary || '#1f2733') + '22' }} />
             <b>{p.name || p.title}</b>
             {p.spec && <p className="sb-muted">{p.spec}</p>}
@@ -120,6 +121,9 @@ export function Applications({ props = {}, ctx }) {
       <div className="sb-grid">
         {(items.length ? items : ['Automotive', 'Electronics', 'Metalworking']).map((a, i) => (
           <div className="sb-card" key={i}>
+            <SlotImage src={typeof a === 'object' ? (a.image || props.image) : props.image}
+                       alt={typeof a === 'string' ? a : (a.name || 'application')}
+                       className="sb-img sb-media-img" />
             <div className="sb-media" style={{ background: (t.accent || '#c2570c') + '1f' }} />
             <b>{typeof a === 'string' ? a : a.name}</b>
           </div>
@@ -153,6 +157,9 @@ export function CasesGrid({ props = {}, ctx }) {
       <div className="sb-grid sb-grid-3">
         {(items.length ? items : ['Project A', 'Project B', 'Project C']).map((c, i) => (
           <div className="sb-card" key={i} style={{ borderColor: t.border || '#e3e8ef' }}>
+            <SlotImage src={typeof c === 'object' ? (c.image || props.image) : props.image}
+                       alt={typeof c === 'string' ? c : (c.title || 'case')}
+                       className="sb-img sb-media-img" />
             <div className="sb-media" style={{ background: (t.primary || '#1f2733') + '18' }} />
             <b>{typeof c === 'string' ? c : c.title}</b>
             {typeof c === 'object' && c.result && <p className="sb-muted">{c.result}</p>}

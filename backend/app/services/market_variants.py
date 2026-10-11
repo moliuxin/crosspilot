@@ -78,10 +78,24 @@ async def generate_variants(db, tenant_id: int, site: models.Site, *, regenerate
         # ---- Asset Slot 管线(PHASE 8):REAL > AI_GENERATED > FALLBACK ----
         manifest = await resolve_slots(db, tenant_id, site, market, sections, real_images, category, industry_id)
 
-        # 资产 URL 注入区块 props(hero.image 等)供 site-blocks 渲染真实 <img>
+        # 资产 URL 注入所有有图区块(section type → slot name 映射)
+        SECTION_TO_SLOT = {
+            "hero": "hero",
+            "products": "product_cover",
+            "applications": "application_scene",
+            "cases": "case",
+            "factory": "factory",
+            "certifications": None,  # 事实性元素禁止 AI 图
+            "supply_capability": "application_scene",
+            "technical_details": "application_scene",
+        }
         for s in sections:
-            slot = "hero" if s.get("type") == "hero" else s.get("type")
-            hit = manifest.get(slot) or manifest.get("hero")
+            sec_type = s.get("type", "")
+            slot = SECTION_TO_SLOT.get(sec_type, sec_type)
+            # 查找匹配:先精确匹配 → 再 fallback hero(仅 hero 类区块用 hero 兜底)
+            hit = manifest.get(slot) if slot else None
+            if not hit and sec_type in ("hero",):
+                hit = manifest.get("hero")
             if hit and hit.get("url"):
                 s["props"] = {**s.get("props", {}), "image": hit["url"],
                               "image_source": hit.get("source_type", "")}
@@ -116,12 +130,13 @@ async def resolve_slots(db, tenant_id, site, market, sections, real_images, cate
     from ..skills.market_transcreation import FORBIDDEN_AI_ROLES
 
     brief_skill_in = {"product_category": category, "market": market, "industry": industry_id}
+    # 解析所有组件声明的 asset_slots(不只 hero;product/application/factory/case 也需要图)
     slots: list[str] = []
     for s in sections:
         for slot_meta in s.get("component_meta", {}).get("asset_slots", []):
-            if not slot_meta.get("required", False) and slot_meta.get("slot") not in ("hero",):
-                continue
-            slots.append(slot_meta["slot"])
+            slot_name = slot_meta.get("slot", "")
+            if slot_name and slot_name not in FORBIDDEN_AI_ROLES:
+                slots.append(slot_name)
     slots = list(dict.fromkeys(slots)) or ["hero"]
 
     ctx = SkillContext(tenant_id=tenant_id, site_id=site.id, market=market)
