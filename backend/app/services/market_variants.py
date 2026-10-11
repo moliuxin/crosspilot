@@ -125,12 +125,19 @@ async def generate_variants(db, tenant_id: int, site: models.Site, *, regenerate
 
 
 async def resolve_slots(db, tenant_id, site, market, sections, real_images, category, industry_id) -> dict:
-    """按槽位声明解析图片:REAL(用户产品图)→ AI_GENERATED(ImageProvider)→ FALLBACK。"""
+    """按槽位声明解析图片(队列版:限流+重试+缓存+共享)。
+
+    槽位分类:
+    - hero / application_scene:市场特定,每市场独立生成(最多 3×2=6 次)
+    - product_cover:跨市场共享,只生成 1 次
+    - case:禁止 AI 生成"真实客户案例"(改为 Application Concept 或隐藏)
+    - FORBIDDEN_AI_ROLES:事实性元素一律跳过
+    """
     from ..image_provider import get_image_provider
     from ..skills.market_transcreation import FORBIDDEN_AI_ROLES
+    from .image_queue import generate_cached, SHARED_SLOTS
 
     brief_skill_in = {"product_category": category, "market": market, "industry": industry_id}
-    # 解析所有组件声明的 asset_slots(不只 hero;product/application/factory/case 也需要图)
     slots: list[str] = []
     for s in sections:
         for slot_meta in s.get("component_meta", {}).get("asset_slots", []):
@@ -143,8 +150,8 @@ async def resolve_slots(db, tenant_id, site, market, sections, real_images, cate
     brief_res, _ = await registry.run("visual_brief", ctx, {**brief_skill_in, "slots": slots},
                                       db=db, deduct_credits=False)
     briefs = (brief_res.output.get("briefs") if brief_res else []) or []
-
     provider = get_image_provider()
+
     manifest: dict[str, Any] = {}
     real_iter = iter(real_images)
     for b in briefs:
@@ -152,7 +159,14 @@ async def resolve_slots(db, tenant_id, site, market, sections, real_images, cate
         if slot in FORBIDDEN_AI_ROLES:
             manifest[slot] = {"source_type": "FALLBACK", "url": "", "note": "事实性元素,需真实素材,AI 不生成"}
             continue
-        # 1) REAL:产品真实图优先(仅非 hero 槽位用产品图;hero 用场景图)
+
+        # Case:禁止 AI 伪装真实客户案例
+        if slot == "case":
+            manifest[slot] = {"source_type": "FALLBACK", "url": "",
+                              "note": "案例需真实素材;可改为 Application Concept 展示"}
+            continue
+
+        # 1) REAL:产品真实图优先
         if slot != "hero" and real_images:
             try:
                 url = next(real_iter)
@@ -161,18 +175,32 @@ async def resolve_slots(db, tenant_id, site, market, sections, real_images, cate
                 continue
             except StopIteration:
                 pass
-        # 2) AI_GENERATED
+
+        # 2) AI_GENERATED(带限流/重试/缓存)
+        prompt = f"{b.get('subject','')} | {b.get('scene','')} | {b.get('negative_prompt','')}"
         try:
-            res = await provider.generate(
-                prompt=f"{b.get('subject','')} | {b.get('scene','')} | {b.get('negative_prompt','')}",
-                market=market, role=slot, subject=b.get("subject", ""))
-            _save_asset(db, tenant_id, site, market, slot, res["url"], "AI_GENERATED",
-                        provider_name=res.get("provider", ""), prompt=f"{b.get('subject','')}")
-            manifest[slot] = {"source_type": "AI_GENERATED", "url": res["url"], "provider": res.get("provider", "")}
-            continue
-        except Exception as exc:  # 3) FALLBACK
-            logger.warning("槽位 %s 生成失败,使用 FALLBACK:%s", slot, str(exc)[:80])
-        manifest[slot] = {"source_type": "FALLBACK", "url": "", "note": "未生成,渲染时用占位样式"}
+            res = await generate_cached(
+                db, tenant_id, site.id, provider,
+                product_category=category, market=market, role=slot,
+                prompt=prompt, subject=b.get("subject", ""),
+            )
+            if res.get("url"):
+                manifest[slot] = {
+                    "source_type": "AI_GENERATED", "url": res["url"],
+                    "provider": res.get("provider", ""),
+                    "cached": res.get("cached", False),
+                    "attempts": res.get("attempts", 1),
+                }
+            else:
+                manifest[slot] = {
+                    "source_type": "FALLBACK", "url": "",
+                    "note": f"生成失败({res.get('error','unknown')[:60]})",
+                    "attempts": res.get("attempts", 0),
+                }
+        except Exception as exc:
+            logger.warning("槽位 %s 生成异常:%s", slot, str(exc)[:80])
+            manifest[slot] = {"source_type": "FALLBACK", "url": "", "note": f"异常:{str(exc)[:60]}"}
+
     db.commit()
     return manifest
 

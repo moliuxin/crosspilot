@@ -10,6 +10,7 @@ import secrets
 import logging
 
 from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
@@ -547,3 +548,94 @@ def list_site_assets(site_id: str, market: str = "", db: Session = Depends(get_d
         q = q.filter(models.Asset.market == market)
     items = q.order_by(models.Asset.created_at.desc()).all()
     return {"ok": True, "assets": [a.to_dict() for a in items]}
+
+
+class VisualsRegenerateRequest(BaseModel):
+    market: str = ""
+    role: str = ""
+
+
+@router.post("/{site_id}/visuals/regenerate")
+async def regenerate_visuals(
+    site_id: str,
+    payload: VisualsRegenerateRequest,
+    db: Session = Depends(get_db),
+    tid: int = Depends(tenant_scope),
+):
+    """只重新生成 FALLBACK 的图片(限流恢复后一键补齐)。"""
+    from ..image_provider import get_image_provider
+    from ..services.market_variants import SECTION_TO_SLOT
+    from ..knowledge import match_industry
+
+    site = require_site(db, tid, site_id)
+    provider = get_image_provider()
+
+    # 找 FALLBACK 的 manifest 条目
+    variants = (
+        db.query(models.SiteMarketVariant)
+        .filter(models.SiteMarketVariant.site_id == site.id)
+        .all()
+    )
+    regenerated = 0
+    still_fallback = 0
+    results = []
+
+    for v in variants:
+        if payload.market and v.market != payload.market:
+            continue
+        manifest = v.asset_manifest or {}
+        sections = (v.layout_schema or {}).get("sections", [])
+
+        for slot, info in manifest.items():
+            if info.get("source_type") != "FALLBACK":
+                continue
+            if payload.role and slot != payload.role:
+                continue
+            # 跳过事实性禁止项
+            if slot in ("case", "certification", "customer_logo", "factory_evidence",
+                        "product_label", "spec_plate", "case_real"):
+                continue
+
+            # 从 brief 获取 prompt(简化:用 slot + category)
+            prompt = f"{site.product_category} | {slot.replace('_', ' ')} | professional B2B industrial photography"
+            try:
+                res = await provider.generate(
+                    prompt=prompt, market=v.market, role=slot,
+                    subject=site.product_category)
+                if res.get("url"):
+                    manifest[slot] = {"source_type": "AI_GENERATED", "url": res["url"],
+                                      "provider": res.get("provider", ""),
+                                      "regenerated": True}
+                    db.add(models.Asset(
+                        id=new_id("asset"), tenant_id=tid, site_id=site.id,
+                        market=v.market, section_id=slot, role=slot,
+                        source_type="AI_GENERATED", provider=res.get("provider", ""),
+                        prompt=prompt[:500], url=res["url"],
+                    ))
+                    regenerated += 1
+                    results.append({"market": v.market, "slot": slot, "status": "AI_GENERATED"})
+                else:
+                    still_fallback += 1
+                    results.append({"market": v.market, "slot": slot, "status": "still_fallback"})
+            except Exception as exc:
+                still_fallback += 1
+                results.append({"market": v.market, "slot": slot,
+                                "status": "error", "error": str(exc)[:80]})
+
+        # 注入 URL 到 section props
+        for s in sections:
+            sec_type = s.get("type", "")
+            slot = SECTION_TO_SLOT.get(sec_type, sec_type)
+            hit = manifest.get(slot) if slot else None
+            if not hit and sec_type == "hero":
+                hit = manifest.get("hero")
+            if hit and hit.get("url"):
+                s["props"] = {**s.get("props", {}), "image": hit["url"],
+                              "image_source": hit.get("source_type", "")}
+
+        v.asset_manifest = manifest
+        v.layout_schema = {"sections": sections,
+                           "layout_source": (v.layout_schema or {}).get("layout_source", "template")}
+
+    db.commit()
+    return {"ok": True, "regenerated": regenerated, "still_fallback": still_fallback, "results": results}

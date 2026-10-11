@@ -49,11 +49,17 @@ class Settings(BaseSettings):
     # 直接报「真实AI服务暂时不可用」——用于向评委证明没有冒充 AI。
     demo_require_real_ai: bool = False
 
-    # Image provider（GLM-Image 走 OpenAI 兼容图像协议；未配置 key 时用 mock 占位图）
+    # Image provider(GLM-Image 走 OpenAI 兼容图像协议;未配置 key 时用 mock 占位图)
     image_api_key: str = ""
     image_base_url: str = "https://open.bigmodel.cn/api/paas/v4"
     image_model: str = "cogview-4"
     image_timeout: float = 120.0
+
+    # 图片生成限流韧性(P0-IMAGE-RATE-LIMIT-RESILIENCE)
+    image_max_concurrency: int = 1          # 同时最多几个图片请求
+    image_request_interval_ms: int = 1200   # 请求间隔(ms),避免连续触发 429
+    image_max_retries: int = 3              # 429 时最大重试次数
+    image_retry_base_seconds: float = 2.0   # 指数退避基数: 2s → 4s → 8s
 
     # 免费额度策略
     free_generation_limit: int = 1
