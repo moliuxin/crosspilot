@@ -6,10 +6,11 @@
 - 默认站点（迁移承载旧数据）不可删除。
 """
 import secrets
+import copy
 
 import logging
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy import func
 from sqlalchemy.orm import Session
@@ -300,6 +301,7 @@ def unlink_site_product(site_id: str, product_id: str, db: Session = Depends(get
 @router.post("/generate", status_code=201)
 async def generate_site_full(
     payload: schemas.SiteGenerateRequest,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     tid: int = Depends(tenant_scope),
 ):
@@ -451,7 +453,7 @@ async def generate_site_full(
         usage.free_generation_used += 1
 
     # PHASE 6：三市场变体真实持久化（每市场独立 layout/tokens/文案/资产清单）
-    from ..services.market_variants import generate_variants as _gv
+    from ..services.market_variants import fill_pending_images, generate_variants as _gv
 
     try:
         variants = await _gv(db, tid, site)
@@ -460,6 +462,10 @@ async def generate_site_full(
              "assets": len(v.asset_manifest)}
             for v in variants
         ]
+        # 图片异步补齐:站点结构已就绪,后台按 优先市场→hero→application→其余 补图,
+        # 前端轮询 GET /sites/{id}/visuals/status 展示 "Images Generating N/M"
+        priority = markets[0] if markets else ""
+        background_tasks.add_task(fill_pending_images, db, tid, site.id, priority)
     except Exception as exc:  # noqa: BLE001 — 变体失败不阻断主站生成
         variants_summary = []
         logger.warning("市场变体生成失败（不阻断主流程）：%s", str(exc)[:150])
@@ -530,13 +536,26 @@ def get_market_variant(site_id: str, market: str, db: Session = Depends(get_db),
 
 
 @router.post("/{site_id}/market-variants/generate", status_code=201)
-async def generate_market_variants(site_id: str, db: Session = Depends(get_db), tid: int = Depends(tenant_scope)):
-    """(Re)生成三市场变体:Industry → Theme/Layout/Transcreation × 3 市场 → Asset Slot 管线 → 持久化。"""
-    from ..services.market_variants import generate_variants
+async def generate_market_variants(
+    site_id: str,
+    background_tasks: BackgroundTasks,
+    priority_market: str = "",
+    db: Session = Depends(get_db),
+    tid: int = Depends(tenant_scope),
+):
+    """(Re)生成三市场变体:Industry → Theme/Layout/Transcreation × 3 市场 → Asset Slot 管线 → 持久化。
+
+    结构生成完成后立即返回;AI 图片由后台任务补齐(priority_market 优先),
+    进度见 GET /{site_id}/visuals/status。
+    """
+    from ..services.market_variants import fill_pending_images, generate_variants
 
     site = require_site(db, tid, site_id)
     variants = await generate_variants(db, tid, site, regenerate=True)
-    return {"ok": True, "variants": [v.to_dict() for v in variants]}
+    priority = priority_market if priority_market in (site.target_markets or []) else (site.target_markets or [""])[0]
+    background_tasks.add_task(fill_pending_images, db, tid, site.id, priority)
+    return {"ok": True, "variants": [v.to_dict() for v in variants],
+            "image_job": {"priority_market": priority, "mode": "background"}}
 
 
 @router.get("/{site_id}/assets")
@@ -562,15 +581,19 @@ async def regenerate_visuals(
     db: Session = Depends(get_db),
     tid: int = Depends(tenant_scope),
 ):
-    """只重新生成 FALLBACK 的图片(限流恢复后一键补齐)。"""
+    """只重新生成 FALLBACK/PENDING 的图片(限流恢复后一键补齐)。
+
+    走统一 image_queue:串行限速 + Retry-After/指数退避 + DB/共享缓存,
+    不再直连 provider(避免恢复期再次触发 429)。支持 market/role 过滤。
+    """
     from ..image_provider import get_image_provider
     from ..services.market_variants import SECTION_TO_SLOT
-    from ..knowledge import match_industry
+    from ..services.image_queue import generate_cached
 
     site = require_site(db, tid, site_id)
     provider = get_image_provider()
 
-    # 找 FALLBACK 的 manifest 条目
+    # 找 FALLBACK / PENDING 的 manifest 条目
     variants = (
         db.query(models.SiteMarketVariant)
         .filter(models.SiteMarketVariant.site_id == site.id)
@@ -583,44 +606,55 @@ async def regenerate_visuals(
     for v in variants:
         if payload.market and v.market != payload.market:
             continue
-        manifest = v.asset_manifest or {}
-        sections = (v.layout_schema or {}).get("sections", [])
+        manifest = dict(v.asset_manifest or {})
+        sections = copy.deepcopy((v.layout_schema or {}).get("sections", []))
 
-        for slot, info in manifest.items():
-            if info.get("source_type") != "FALLBACK":
+        for slot, info in list(manifest.items()):
+            if info.get("source_type") not in ("FALLBACK", "PENDING"):
                 continue
             if payload.role and slot != payload.role:
                 continue
-            # 跳过事实性禁止项
+            # 跳过事实性禁止项与概念槽位(case 走 AI_GENERATED_CONCEPT,不伪装真实案例)
             if slot in ("case", "certification", "customer_logo", "factory_evidence",
                         "product_label", "spec_plate", "case_real"):
                 continue
 
-            # 从 brief 获取 prompt(简化:用 slot + category)
-            prompt = f"{site.product_category} | {slot.replace('_', ' ')} | professional B2B industrial photography"
-            try:
-                res = await provider.generate(
-                    prompt=prompt, market=v.market, role=slot,
-                    subject=site.product_category)
-                if res.get("url"):
-                    manifest[slot] = {"source_type": "AI_GENERATED", "url": res["url"],
-                                      "provider": res.get("provider", ""),
-                                      "regenerated": True}
-                    db.add(models.Asset(
-                        id=new_id("asset"), tenant_id=tid, site_id=site.id,
-                        market=v.market, section_id=slot, role=slot,
-                        source_type="AI_GENERATED", provider=res.get("provider", ""),
-                        prompt=prompt[:500], url=res["url"],
-                    ))
-                    regenerated += 1
-                    results.append({"market": v.market, "slot": slot, "status": "AI_GENERATED"})
-                else:
-                    still_fallback += 1
-                    results.append({"market": v.market, "slot": slot, "status": "still_fallback"})
-            except Exception as exc:
+            prompt = (info.get("subject") or site.product_category or slot) + \
+                " | " + (info.get("scene") or slot.replace('_', ' ')) + \
+                " | professional B2B industrial photography"
+            res = await generate_cached(
+                db, tid, site.id, provider,
+                product_category=site.product_category or "", market=v.market, role=slot,
+                prompt=prompt, subject=info.get("subject") or site.product_category or "")
+            if res.get("url"):
+                manifest[slot] = {
+                    "source_type": "AI_GENERATED", "url": res["url"],
+                    "provider": res.get("provider", ""),
+                    "regenerated": True,
+                    "attempts": res.get("attempts", 1),
+                    "retries": res.get("retries", 0),
+                    "rate_limit_hit": res.get("rate_limit_hit", False),
+                    "latency_ms": res.get("latency_ms", 0),
+                    "status": "success",
+                }
+                db.add(models.Asset(
+                    id=new_id("asset"), tenant_id=tid, site_id=site.id,
+                    market=v.market, section_id=slot, role=slot,
+                    source_type="AI_GENERATED", provider=res.get("provider", ""),
+                    prompt=prompt[:500], url=res["url"],
+                ))
+                regenerated += 1
+                results.append({"market": v.market, "slot": slot, "status": "AI_GENERATED",
+                                "attempts": res.get("attempts", 1)})
+            else:
+                info.update({
+                    "attempts": res.get("attempts", 0),
+                    "error_code": res.get("error_code", ""),
+                    "note": f"重新生成失败({(res.get('error') or 'unknown')[:80]})",
+                })
                 still_fallback += 1
-                results.append({"market": v.market, "slot": slot,
-                                "status": "error", "error": str(exc)[:80]})
+                results.append({"market": v.market, "slot": slot, "status": "still_fallback",
+                                "error_code": res.get("error_code", "")})
 
         # 注入 URL 到 section props
         for s in sections:
@@ -633,9 +667,21 @@ async def regenerate_visuals(
                 s["props"] = {**s.get("props", {}), "image": hit["url"],
                               "image_source": hit.get("source_type", "")}
 
-        v.asset_manifest = manifest
+        v.asset_manifest = dict(manifest)  # 新对象确保 JSON 列脏检测
         v.layout_schema = {"sections": sections,
                            "layout_source": (v.layout_schema or {}).get("layout_source", "template")}
 
     db.commit()
     return {"ok": True, "regenerated": regenerated, "still_fallback": still_fallback, "results": results}
+
+
+@router.get("/{site_id}/visuals/status")
+def visuals_status(site_id: str, db: Session = Depends(get_db), tid: int = Depends(tenant_scope)):
+    """图片真实状态:后台补图进度 + 每市场 AI/FALLBACK/PENDING 计数与失败原因。
+
+    前端轮询此端点展示 "Images: Generating 3/6" 与 "Reason: Provider Rate Limited"。
+    """
+    from ..services.market_variants import visuals_job_status
+
+    site = require_site(db, tid, site_id)
+    return {"ok": True, "site_id": site.id, **visuals_job_status(db, site.id)}

@@ -683,8 +683,24 @@ export const api = {
     return ok ? data.variants || [] : []
   },
 
-  async generateMarketVariants(siteId) {
-    const { ok, data, error } = await http('POST', `/sites/${encodeURIComponent(siteId)}/market-variants/generate`)
+  async generateMarketVariants(siteId, priorityMarket = '') {
+    const q = priorityMarket ? `?priority_market=${encodeURIComponent(priorityMarket)}` : ''
+    const { ok, data, error } = await http('POST', `/sites/${encodeURIComponent(siteId)}/market-variants/generate${q}`)
+    if (!ok) throw error
+    return data
+  },
+
+  /** 图片真实状态(后台补图进度 + 每市场 AI/Fallback/PENDING 计数与原因) */
+  async getVisualsStatus(siteId) {
+    const { ok, data } = await http('GET', `/sites/${encodeURIComponent(siteId)}/visuals/status`)
+    return ok ? data : null
+  },
+
+  /** 只重新生成 FALLBACK/PENDING 的图片(限流恢复后一键补齐) */
+  async regenerateVisuals(siteId, market = '', role = '') {
+    const { ok, data, error } = await http('POST', `/sites/${encodeURIComponent(siteId)}/visuals/regenerate`, {
+      market, role,
+    })
     if (!ok) throw error
     return data
   },

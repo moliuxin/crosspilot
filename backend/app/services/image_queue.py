@@ -29,8 +29,8 @@ _last_request_time: float = 0
 # 资产缓存: cache_key → asset dict(进程内)
 _cache: dict[str, dict] = {}
 
-# 共享槽位(跨市场只生成一次)
-SHARED_SLOTS = {"product_cover", "product_gallery", "case"}
+# 共享槽位(跨市场只生成一次;case 禁止 AI 生成,不在共享范围)
+SHARED_SLOTS = {"product_cover", "product_gallery"}
 
 
 def _get_semaphore() -> asyncio.Semaphore:
@@ -57,6 +57,35 @@ async def _rate_limit_wait():
     _last_request_time = time.monotonic()
 
 
+def _extract_retry_after(exc: Exception) -> float | None:
+    """从异常(httpx.HTTPStatusError 等)里读 Retry-After 响应头(秒)。
+
+    严格优先服务端指定值;无头/解析失败返回 None,走指数退避。
+    """
+    resp = getattr(exc, "response", None)
+    if resp is None:
+        return None
+    try:
+        raw = resp.headers.get("retry-after")
+        if raw is None:
+            return None
+        return max(0.0, float(raw))
+    except (TypeError, ValueError):
+        return None
+
+
+def _error_code(exc: Exception) -> str:
+    status = getattr(getattr(exc, "response", None), "status_code", None)
+    if status:
+        return str(status)
+    text = str(exc)
+    if "429" in text:
+        return "429"
+    if "timeout" in text.lower():
+        return "timeout"
+    return type(exc).__name__[:32]
+
+
 async def generate_with_retry(
     provider,
     prompt: str,
@@ -64,42 +93,66 @@ async def generate_with_retry(
     role: str,
     subject: str = "",
 ) -> dict[str, Any]:
-    """带 429 重试的图片生成(指数退避 + jitter)。"""
+    """带 429 重试的图片生成。
+
+    Retry-After 存在 → 严格等待指定时长;否则指数退避 base*2^n + jitter。
+    状态机日志:queued → running → retrying/failed/success。
+    """
     s = get_settings()
     max_retries = max(0, s.image_max_retries)
     base_delay = s.image_retry_base_seconds
+    logger.info("[image_queue] queued %s/%s (provider=%s)", market, role, getattr(provider, "name", "?"))
 
+    rate_limit_hit = False
     async with _get_semaphore():
         for attempt in range(max_retries + 1):
             await _rate_limit_wait()
             started = time.perf_counter()
+            logger.info("[image_queue] running %s/%s attempt %d", market, role, attempt + 1)
             try:
                 res = await provider.generate(prompt=prompt, market=market, role=role, subject=subject)
                 res["latency_ms"] = int((time.perf_counter() - started) * 1000)
                 res["attempts"] = attempt + 1
-                res["rate_limit_hit"] = attempt > 0
+                res["retries"] = attempt
+                res["rate_limit_hit"] = rate_limit_hit
+                res["status"] = "success"
+                res.setdefault("error_code", "")
+                logger.info("[image_queue] success %s/%s in %dms (attempts=%d)",
+                            market, role, res["latency_ms"], attempt + 1)
                 return res
             except Exception as exc:
                 err_str = str(exc)
-                is_429 = "429" in err_str or "rate" in err_str.lower()
+                status_code = getattr(getattr(exc, "response", None), "status_code", None)
+                is_429 = status_code == 429 or "429" in err_str or "rate" in err_str.lower()
+                code = _error_code(exc)
+                if is_429:
+                    rate_limit_hit = True
                 if is_429 and attempt < max_retries:
-                    # 读 Retry-After(简化:看异常信息是否含秒数)
-                    retry_after = base_delay * (2 ** attempt) + random.uniform(0, 0.5)
+                    # Retry-After 严格优先;否则指数退避(2s→4s→8s)+jitter
+                    retry_after = _extract_retry_after(exc)
+                    if retry_after is None:
+                        retry_after = base_delay * (2 ** attempt) + random.uniform(0, 0.5)
                     logger.warning(
-                        "[image_queue] 429 on attempt %d for %s/%s, retrying in %.1fs",
-                        attempt + 1, market, role)
+                        "[image_queue] retrying %s/%s (code=%s) in %.1fs (attempt %d/%d)",
+                        market, role, code, retry_after, attempt + 1, max_retries)
                     await asyncio.sleep(retry_after)
                     continue
-                # 非 429 或重试用完
+                # 非 429 或重试用完 → fallback
+                logger.error("[image_queue] fallback %s/%s (code=%s): %s",
+                             market, role, code, err_str[:120])
                 return {
-                    "error": err_str[:200],
-                    "attempts": attempt + 1,
-                    "rate_limit_hit": is_429,
+                    "url": "", "status": "failed",
+                    "error": err_str[:200], "error_code": code,
+                    "attempts": attempt + 1, "retries": attempt,
+                    "rate_limit_hit": rate_limit_hit,
                     "latency_ms": int((time.perf_counter() - started) * 1000),
-                    "url": "", "provider": getattr(provider, "name", "unknown"),
+                    "provider": getattr(provider, "name", "unknown"),
                 }
 
-    return {"error": "max retries exceeded", "attempts": max_retries + 1, "url": ""}
+    return {"url": "", "status": "failed", "error": "max retries exceeded",
+            "error_code": "429", "attempts": max_retries + 1,
+            "retries": max_retries, "rate_limit_hit": rate_limit_hit,
+            "latency_ms": 0, "provider": getattr(provider, "name", "unknown")}
 
 
 async def generate_cached(

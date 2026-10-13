@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { api } from '../../services/api'
 import { useApp } from '../../app/store/AppContext'
@@ -11,9 +11,52 @@ const MARKET_META = {
   'ru-RU': { flag: '🇷🇺', label: 'Русский', note: '参数与服务直给' },
 }
 
+/** 市场图片真实状态:AI / Fallback / 生成中 计数 + 失败原因(P0-IMAGE-RATE-LIMIT-RESILIENCE) */
+function ImageStatusStrip({ status, onRegenerate, regenBusy }) {
+  if (!status || !Array.isArray(status.markets) || status.markets.length === 0) return null
+  const job = status.job || {}
+  const totalFallback = status.markets.reduce((n, m) => n + (m.FALLBACK || 0), 0)
+  const totalPending = status.markets.reduce((n, m) => n + (m.PENDING || 0), 0)
+  const running = job.status === 'running' || totalPending > 0
+  const done = job.total ? `${job.done + job.failed}/${job.total}` : null
+  return (
+    <div className="mv-image-status">
+      <div className="mv-imgs-row">
+        {running
+          ? <span className="mv-img-chip gen">⏳ Images: Generating {done || `${totalPending} pending`}</span>
+          : <span className="mv-img-chip ok">✓ Images ready {done ? `(${done})` : ''}</span>}
+        {status.markets.map((m) => (
+          <span className="mv-img-chip" key={m.market} title={(m.reasons || []).join('\n') || '全部图片就绪'}>
+            {MARKET_META[m.market]?.flag || ''} {m.market}:{' '}
+            <b style={{ color: '#15803d' }}>{m.AI} AI</b> /{' '}
+            {m.REAL > 0 && <><b style={{ color: '#2563eb' }}>{m.REAL} real</b> / </>}
+            {m.CONCEPT > 0 && <><b style={{ color: '#9333ea' }}>{m.CONCEPT} concept</b> / </>}
+            {m.FALLBACK > 0
+              ? <b style={{ color: '#dc2626' }}>{m.FALLBACK} fallback</b>
+              : <span style={{ color: '#6b7280' }}>0 fb</span>}
+            {m.PENDING > 0 && <b style={{ color: '#d97706' }}> · {m.PENDING} 中</b>}
+          </span>
+        ))}
+        {totalFallback > 0 && (
+          <button className="ghost-btn" onClick={onRegenerate} disabled={regenBusy}>
+            {regenBusy ? '补图中…' : `⟳ Regenerate Missing Visuals(${totalFallback})`}
+          </button>
+        )}
+      </div>
+      {totalFallback > 0 && (
+        <div className="mv-img-reason muted" style={{ fontSize: 12 }}>
+          Reason: {[...new Set(status.markets.flatMap((m) => m.reasons || []))].slice(0, 3).join(' · ') || 'Provider 返回错误'}
+          (Provider 恢复后点上方按钮只补失败图,已成功图不重复计费)
+        </div>
+      )}
+    </div>
+  )
+}
+
 /**
  * PHASE 6 前端:三市场变体并排(真正不同的 layout_schema / tokens / 文案 / 资产)。
  * PHASE 8:AI 画笔 — 点击区块选中 → 自然语言 → Draft/Diff → 确认发布 → 可回滚。
+ * 异步图片:结构先生成(站点立即可见),图片后台补齐,轮询自动刷新到最新资产。
  */
 export default function MarketVariantsPanel({ siteId }) {
   const { toast, openPaywall } = useApp()
@@ -25,6 +68,9 @@ export default function MarketVariantsPanel({ siteId }) {
   const [brushResult, setBrushResult] = useState(null)
   const [brushBusy, setBrushBusy] = useState(false)
   const [versionInfo, setVersionInfo] = useState(null)
+  const [imgStatus, setImgStatus] = useState(null)
+  const [regenBusy, setRegenBusy] = useState(false)
+  const pollRef = useRef(null)
 
   const load = useCallback(() => {
     if (!siteId) return
@@ -32,6 +78,35 @@ export default function MarketVariantsPanel({ siteId }) {
   }, [siteId])
 
   useEffect(() => { load() }, [load])
+
+  // 图片后台补齐进度:轮询 status,直到无 PENDING 且任务结束;期间同步刷新区块图
+  const pollStatus = useCallback(() => {
+    if (!siteId) return
+    clearInterval(pollRef.current)
+    const tick = async () => {
+      try {
+        const st = await api.getVisualsStatus(siteId)
+        if (!st) return
+        setImgStatus(st)
+        const pending = (st.markets || []).reduce((n, m) => n + (m.PENDING || 0), 0)
+        if (pending > 0 || st.job?.status === 'running') {
+          load()  // 拉最新 sections(图片逐张就位)
+        } else {
+          clearInterval(pollRef.current)
+          pollRef.current = null
+          load()
+        }
+      } catch { /* 后台任务未就绪,忽略 */ }
+    }
+    tick()
+    pollRef.current = setInterval(tick, 3000)
+    return () => clearInterval(pollRef.current)
+  }, [siteId, load])
+
+  useEffect(() => {
+    pollStatus()
+    return () => clearInterval(pollRef.current)
+  }, [pollStatus])
 
   useEffect(() => {
     if (!siteId) return
@@ -45,11 +120,31 @@ export default function MarketVariantsPanel({ siteId }) {
     try {
       const res = await api.generateMarketVariants(siteId)
       setVariants(res.variants || [])
-      toast('三市场变体已生成(结构级差异,非翻译)', 'success')
+      toast('三市场变体已生成(结构级差异,非翻译);图片后台补齐中', 'success')
+      pollStatus()
     } catch (e) {
       toast(`生成失败:${e?.message || e?.detail?.message || '请稍后重试'}`, 'warn')
     } finally {
       setBusy(false)
+    }
+  }
+
+  /** 只补 FALLBACK 的图片(限流恢复后一键恢复,已成功图不重复计费) */
+  async function regenerateMissing() {
+    setRegenBusy(true)
+    try {
+      const res = await api.regenerateVisuals(siteId)
+      const ok = res.regenerated || 0
+      const still = res.still_fallback || 0
+      toast(ok > 0
+        ? `已补齐 ${ok} 张图片${still ? `,仍有 ${still} 张失败(Provider 未恢复)` : ''}`
+        : `没有可补的图片${still ? `(${still} 张仍失败)` : ''}`, ok > 0 ? 'success' : 'warn')
+      load()
+      pollStatus()
+    } catch (e) {
+      toast(`补图失败:${e?.detail?.message || e?.message || '请重试'}`, 'warn')
+    } finally {
+      setRegenBusy(false)
     }
   }
 
@@ -118,6 +213,10 @@ export default function MarketVariantsPanel({ siteId }) {
         <div className="empty" style={{ padding: '26px 0' }}>
           尚无市场变体 —— 点击「生成三市场变体」。
         </div>
+      )}
+
+      {variants.length > 0 && (
+        <ImageStatusStrip status={imgStatus} onRegenerate={regenerateMissing} regenBusy={regenBusy} />
       )}
 
       {/* AI 画笔操作条 */}
