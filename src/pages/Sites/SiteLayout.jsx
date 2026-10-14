@@ -112,6 +112,7 @@ export default function SiteLayout() {
         <NavLink to="products" className={({ isActive }) => `site-tab${isActive ? ' active' : ''}`}>产品</NavLink>
         <NavLink to="editor" className={({ isActive }) => `site-tab${isActive ? ' active' : ''}`}>页面编辑</NavLink>
         <NavLink to="markets" className={({ isActive }) => `site-tab${isActive ? ' active' : ''}`}>中 / 英 / 俄 市场版本</NavLink>
+        <NavLink to="conversion" className={({ isActive }) => `site-tab${isActive ? ' active' : ''}`}>转化分析</NavLink>
         <NavLink to="versions" className={({ isActive }) => `site-tab${isActive ? ' active' : ''}`}>版本历史</NavLink>
       </nav>
 

@@ -16,6 +16,8 @@ import { apiBasePath, apiUrl } from '../config/paths'
 // 保留旧导出名做兼容；新代码请使用 apiUrl(path)，勿手工拼接。
 export const API_BASE = apiBasePath()
 const TIMEOUT = 8000
+// AI 生成类请求(整站/三市场变体/画笔/Skill/Agent):真实 LLM 多次调用可达 1-3 分钟
+const AI_TIMEOUT = 300000
 
 const TOKEN_KEY = 'sitepilot.token'
 
@@ -109,9 +111,9 @@ class ApiError extends Error {
  * 统一请求：带超时、错误解析；后端不可用时自动降级到 local。
  * @returns {Promise<{ok:boolean, data:any|null, error:Error|null}>}
  */
-async function http(method, path, body, extraHeaders) {
+async function http(method, path, body, extraHeaders, { timeoutMs = TIMEOUT } = {}) {
   const ctrl = new AbortController()
-  const timer = setTimeout(() => ctrl.abort(), TIMEOUT)
+  const timer = setTimeout(() => ctrl.abort(), timeoutMs)
   try {
     const token = getToken()
     const res = await fetch(apiUrl(path), {
@@ -281,7 +283,7 @@ export const api = {
 
   /** AI 整站生成:产品类别 → 结构化 plan → 站点+页面+图片资产(本地降级不可用,必须后端)。 */
   async generateSite(payload) {
-    const { ok, data, error } = await http('POST', '/sites/generate', payload)
+    const { ok, data, error } = await http('POST', '/sites/generate', payload, undefined, { timeoutMs: AI_TIMEOUT })
     if (!ok) throw error
     return data
   },
@@ -301,7 +303,7 @@ export const api = {
 
   /** AI 画笔预览(付费能力,免费账户后端 403)。 */
   async brushPreview(pageId, instruction) {
-    const { ok, data, error } = await http('POST', '/brush/preview', { page_id: pageId, instruction })
+    const { ok, data, error } = await http('POST', '/brush/preview', { page_id: pageId, instruction }, undefined, { timeoutMs: AI_TIMEOUT })
     if (!ok) throw error
     return data
   },
@@ -538,7 +540,7 @@ export const api = {
   /** 生成市场版本；免费额度用尽时为新增市场返回 402（业务错误，不降级） */
   async generateMarket(market) {
     return withFallback(
-      () => http('POST', '/localization/generate', { market }),
+      () => http('POST', '/localization/generate', { market }, undefined, { timeoutMs: AI_TIMEOUT }),
       async () => {
         await delay(360)
         const state = localLocalization()
@@ -613,7 +615,7 @@ export const api = {
   /** 生成优化草稿（不直接改线上，等待人工确认发布） */
   async optimizeProduct(productId) {
     const res = await withFallback(
-      () => http('POST', '/seo/optimize', { productId }),
+      () => http('POST', '/seo/optimize', { productId }, undefined, { timeoutMs: AI_TIMEOUT }),
       async () => {
         await delay(600)
         const diff = buildLocalSeoDiff(productId)
@@ -672,7 +674,7 @@ export const api = {
   async runSkill(skillId, input, { siteId = '', market = '' } = {}) {
     const { ok, data, error } = await http('POST', `/skills/${encodeURIComponent(skillId)}/run`, {
       input: input || {}, site_id: siteId, market,
-    })
+    }, undefined, { timeoutMs: AI_TIMEOUT })
     if (!ok) throw error
     return data
   },
@@ -685,7 +687,7 @@ export const api = {
 
   async generateMarketVariants(siteId, priorityMarket = '') {
     const q = priorityMarket ? `?priority_market=${encodeURIComponent(priorityMarket)}` : ''
-    const { ok, data, error } = await http('POST', `/sites/${encodeURIComponent(siteId)}/market-variants/generate${q}`)
+    const { ok, data, error } = await http('POST', `/sites/${encodeURIComponent(siteId)}/market-variants/generate${q}`, undefined, undefined, { timeoutMs: AI_TIMEOUT })
     if (!ok) throw error
     return data
   },
@@ -700,7 +702,28 @@ export const api = {
   async regenerateVisuals(siteId, market = '', role = '') {
     const { ok, data, error } = await http('POST', `/sites/${encodeURIComponent(siteId)}/visuals/regenerate`, {
       market, role,
-    })
+    }, undefined, { timeoutMs: AI_TIMEOUT })
+    if (!ok) throw error
+    return data
+  },
+
+  /* ---------------- Buyer Conversion Readiness ---------------- */
+  async analyzeConversion(siteId, market, useSemantic = true) {
+    const { ok, data, error } = await http('POST', `/sites/${encodeURIComponent(siteId)}/conversion/analyze`,
+      { market, use_semantic: useSemantic }, undefined, { timeoutMs: AI_TIMEOUT })
+    if (!ok) throw error
+    return data
+  },
+
+  async getConversionReports(siteId, market = '', limit = 10) {
+    const q = `?market=${encodeURIComponent(market)}&limit=${limit}`
+    const { ok, data } = await http('GET', `/sites/${encodeURIComponent(siteId)}/conversion/reports${q}`)
+    return ok ? data : { reports: [] }
+  },
+
+  async conversionImprovementDraft(siteId, market, reportId = '') {
+    const { ok, data, error } = await http('POST', `/sites/${encodeURIComponent(siteId)}/conversion/improvement-draft`,
+      { market, report_id: reportId })
     if (!ok) throw error
     return data
   },
@@ -711,10 +734,11 @@ export const api = {
     return data
   },
 
-  async brushGenerate(siteId, market, sectionId, instruction) {
+  async brushGenerate(siteId, market, sectionId, instruction, selection = null) {
     const { ok, data, error } = await http('POST', '/brush/generate', {
       site_id: siteId, market, section_id: sectionId, instruction,
-    })
+      ...(selection ? { selection } : {}),
+    }, undefined, { timeoutMs: AI_TIMEOUT })
     if (!ok) throw error
     return data
   },
@@ -739,7 +763,7 @@ export const api = {
         : { command: typeof payload === 'string' ? payload : payload.command || '' }
 
     return withFallback(
-      () => http('POST', '/agent/run', normalized),
+      () => http('POST', '/agent/run', normalized, undefined, { timeoutMs: AI_TIMEOUT }),
       async () => {
         await delay(650)
         return buildLocalAgentResult(payload)
@@ -912,7 +936,7 @@ export const api = {
   /** 页面区块文案 AI 改写（返回建议值，前端确认后保存） */
   async rewritePageCopy(pageId, payload) {
     return withFallback(
-      () => http('POST', `/pages/${pageId}/ai-rewrite`, payload),
+      () => http('POST', `/pages/${pageId}/ai-rewrite`, payload, undefined, { timeoutMs: AI_TIMEOUT }),
       async () => {
         await delay(700)
         const market = payload.market || 'en-US'

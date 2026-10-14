@@ -25,6 +25,7 @@ from .routers import (
     auth,
     brush,
     company,
+    conversion,
     credits,
     entitlements as entitlements_router,
     inquiries,
@@ -75,6 +76,9 @@ async def lifespan(_: FastAPI):
         ensure_columns(db, "skill_runs", {
             "user_id": "VARCHAR(64) DEFAULT ''",
             "finished_at": "TIMESTAMP WITH TIME ZONE",
+        })
+        ensure_columns(db, "drafts", {
+            "selection": "JSON DEFAULT '{}'::json",
         })
     finally:
         db.close()
@@ -294,6 +298,7 @@ for r in (
     pages.router,
     sites.router,
     brush.router,
+    conversion.router,
     tasks.router,
     credits.router,
     site.router,

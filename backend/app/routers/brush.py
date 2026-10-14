@@ -51,11 +51,18 @@ class BrushGenerateRequest(BaseModel):
     market: str
     section_id: str
     instruction: str
+    # Freehand AI Brush 圈选数据(可选):selection_mode(freehand/rectangle)/
+    # polygon_points/bounding_box/section_hint —— lasso 决定受影响区块
+    selection: dict = {}
 
 
 @router.post("/generate", status_code=201)
 async def brush_generate(payload: BrushGenerateRequest, db: Session = Depends(get_db), tid: int = Depends(tenant_scope)):
-    """AI 画笔真生成：变体区块 + 自然语言 → JSON Patch → Draft（绝不直接 Publish）。"""
+    """AI 画笔真生成：变体区块 + 自然语言 → JSON Patch → Draft（绝不直接 Publish）。
+
+    Freehand 圈选：payload.selection.section_hint(圈选重叠最大的区块 id)优先于
+    section_id —— 用户手绘圈了哪块就改哪块;圈选元数据随 Draft 落库可追溯。
+    """
     if not entitlements.has_feature(db, tid, "brush.edit"):
         raise HTTPException(status_code=403, detail={
             "message": "AI 画笔属于 Pro 能力，升级后即可圈选组件并让 AI 修改内容。",
@@ -76,9 +83,17 @@ async def brush_generate(payload: BrushGenerateRequest, db: Session = Depends(ge
     if variant is None:
         raise HTTPException(status_code=404, detail="该市场变体不存在，请先生成")
     sections = (variant.layout_schema or {}).get("sections", [])
-    sec = next((s for s in sections if s.get("id") == payload.section_id), None)
+    target_id = payload.section_id
+    selection = dict(payload.selection or {})
+    hint = str(selection.get("section_hint") or "").strip()
+    if hint:
+        hinted = next((s for s in sections if s.get("id") == hint), None)
+        if hinted is None:
+            raise HTTPException(status_code=404, detail=f"圈选命中的区块 {hint} 不存在")
+        target_id = hint  # 圈选裁决:手绘选区优先
+    sec = next((s for s in sections if s.get("id") == target_id), None)
     if sec is None:
-        raise HTTPException(status_code=404, detail=f"区块 {payload.section_id} 不存在")
+        raise HTTPException(status_code=404, detail=f"区块 {target_id} 不存在")
 
     facts = {p.id: {"name": p.name, "model": p.model, "specs": p.specs}
              for p in db.query(models.Product).filter(models.Product.tenant_id == tid).all()}
@@ -92,6 +107,7 @@ async def brush_generate(payload: BrushGenerateRequest, db: Session = Depends(ge
     )
     user_msg = (
         f"市场:{payload.market};行业:{site.product_category};区块:{sec.get('type')};"
+        f"圈选模式:{selection.get('selection_mode') or 'section-click'};"
         f"当前props:{json.dumps(sec.get('props', {}), ensure_ascii=False)};"
         f"产品事实(只读):{json.dumps(list(facts.values())[:3], ensure_ascii=False)};"
         f"修改要求:{payload.instruction}"
@@ -111,8 +127,19 @@ async def brush_generate(payload: BrushGenerateRequest, db: Session = Depends(ge
         ai_source, model_name = "template", ""
 
     old_props = sec.get("props") or {}
+    # 圈选改文案不得误删已生成的图片:AI/模板未提供 image 时保留原值
+    for keep in ("image", "image_source"):
+        if keep in old_props and not new_props.get(keep):
+            new_props[keep] = old_props[keep]
     diff = [{"field": k, "before": old_props.get(k, ""), "after": new_props.get(k, "")}
             for k in {**old_props, **new_props} if old_props.get(k, "") != new_props.get(k, "")]
+
+    # 圈选元数据落库(spec 5.3):只描述用户圈了哪,不参与发布补丁
+    selection.update({
+        "section_hint": target_id,
+        "market": payload.market,
+        "site_id": site.id,
+    })
 
     draft = models.Draft(
         id=new_id("draft"), tenant_id=tid, site_id=site.id,
@@ -120,7 +147,8 @@ async def brush_generate(payload: BrushGenerateRequest, db: Session = Depends(ge
         entity_type="market_variant", entity_id=variant.id,
         market=payload.market,
         diff=diff,
-        patch={"sections": {payload.section_id: {"props": new_props}}},
+        patch={"sections": {target_id: {"props": new_props}}},
+        selection=selection,
         status="pending",
     )
     db.add(draft)
@@ -128,7 +156,8 @@ async def brush_generate(payload: BrushGenerateRequest, db: Session = Depends(ge
     db.refresh(draft)
     return {
         "ok": True, "draft_id": draft.id, "ai_source": ai_source, "model": model_name,
-        "section": {"id": payload.section_id, "type": sec.get("type")},
+        "section": {"id": target_id, "type": sec.get("type")},
+        "selection": selection,
         "diff": diff, "market": payload.market,
         "note": "草稿已生成，确认发布后才会写入公开变体（人工确认硬约束）",
     }

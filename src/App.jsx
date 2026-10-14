@@ -10,6 +10,7 @@ import SiteNew from './pages/Sites/SiteNew'
 import SiteLayout from './pages/Sites/SiteLayout'
 import SiteOverview from './pages/Sites/SiteOverview'
 import SiteProducts from './pages/Sites/SiteProducts'
+import SiteConversion from './pages/Sites/SiteConversion'
 import Products from './pages/Products/Products'
 import PageEditor from './pages/PageEditor/PageEditor'
 import Inquiries from './pages/Inquiries/Inquiries'
@@ -95,6 +96,7 @@ function Routed() {
           <Route path="products" element={<SiteProducts />} />
           <Route path="editor" element={<PageEditor />} />
           <Route path="markets" element={<Localization />} />
+          <Route path="conversion" element={<SiteConversion />} />
           <Route path="versions" element={<VersionsPage />} />
         </Route>
         <Route path="products" element={<Products />} />

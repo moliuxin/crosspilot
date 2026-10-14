@@ -400,6 +400,9 @@ class Draft(Base):
     # 结构化写回补丁：发布时真正应用到实体（title/slug/meta/faq/... 或 sections）
     # diff 是给人看的展示对比，patch 是给发布引擎执行的数据，两者必须分开。
     patch: Mapped[dict] = mapped_column(MutableDict.as_mutable(JSON), default=dict)
+    # Freehand AI Brush 圈选元数据(FreehandBrush E2E):selection_mode/polygon_points/
+    # bounding_box/section_hint/market —— 只描述"用户圈了哪",不参与发布补丁
+    selection: Mapped[dict] = mapped_column(MutableDict.as_mutable(JSON), default=dict)
     market: Mapped[str] = mapped_column(String(16), default="")
 
     seo_score_before: Mapped[float] = mapped_column(Float, nullable=True)
@@ -703,6 +706,51 @@ class SkillRun(Base):
             "input": self.input_json,
             "output": self.output_json,
             "error": self.error,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+        }
+
+
+class BuyerConversionReport(Base):
+    """Buyer Conversion Readiness 报告(P0-8 规范 6.4)。
+
+    Rule Score(确定性五维)+ 可选 GLM 语义微调(±10,标注 provider/model)。
+    同一 site+market 可存多份历史(Re-score 闭环:改进发布后重新分析对比)。
+    """
+
+    __tablename__ = "buyer_conversion_reports"
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    tenant_id: Mapped[int] = mapped_column(Integer, default=DEFAULT_TENANT_ID, index=True)
+    site_id: Mapped[str] = mapped_column(String(64), default="", index=True)
+    market: Mapped[str] = mapped_column(String(16), default="")
+    variant_id: Mapped[str] = mapped_column(String(64), default="", index=True)
+
+    overall_score: Mapped[int] = mapped_column(Integer, default=0)
+    dimension_scores: Mapped[dict] = mapped_column(MutableDict.as_mutable(JSON), default=dict)
+    evidence: Mapped[dict] = mapped_column(MutableDict.as_mutable(JSON), default=dict)
+    missing_information: Mapped[list] = mapped_column(MutableList.as_mutable(JSON), default=list)
+    recommendations: Mapped[list] = mapped_column(MutableList.as_mutable(JSON), default=list)
+    rule_version: Mapped[str] = mapped_column(String(16), default="1.0.0")
+    provider: Mapped[str] = mapped_column(String(32), default="")   # rule_engine / rule_engine+glm
+    model: Mapped[str] = mapped_column(String(64), default="")
+
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, index=True)
+
+    def to_dict(self) -> dict:
+        return {
+            "id": self.id,
+            "site_id": self.site_id,
+            "market": self.market,
+            "variant_id": self.variant_id,
+            "overall_score": self.overall_score,
+            "dimension_scores": self.dimension_scores or {},
+            "evidence": self.evidence or {},
+            "missing_information": self.missing_information or [],
+            "recommendations": self.recommendations or [],
+            "rule_version": self.rule_version,
+            "provider": self.provider,
+            "model": self.model,
+            "note": "Readiness Score ≠ 成交概率;衡量页面信息完备度对采购商决策的支撑程度。",
             "created_at": self.created_at.isoformat() if self.created_at else None,
         }
 

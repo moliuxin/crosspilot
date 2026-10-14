@@ -141,8 +141,21 @@ MARKET_DEFAULT_SECTIONS: dict[str, list[dict]] = {
 }
 
 
+# 各市场签名区块:市场身份的最低保证(LLM 漏选时补齐;行业 hints 不得使其后移)
+# zh:制造能力/解决方案前置 · en:价值/快速询价前置 · ru:参数/供货前置
+MARKET_SIGNATURE_SECTIONS: dict[str, set[str]] = {
+    "zh-CN": {"factory", "solutions"},
+    "en-US": {"benefits", "fast_quote"},
+    "ru-RU": {"key_specs", "supply_capability"},
+}
+
+
 def layout_for_market(market: str, industry: dict | None = None) -> list[dict]:
-    """市场默认布局;行业 sections_priority 存在时按其重排交集部分。"""
+    """市场默认布局;行业 sections_priority 在签名区块之后重排其余部分。
+
+    市场策略(zh 工厂前置 / en 利益前置 / ru 参数前置)优先级高于行业 hints:
+    行业只影响签名区块之后的顺序,否则行业优先级会抹平三市场差异。
+    """
     base = [dict(s) for s in MARKET_DEFAULT_SECTIONS.get(market, MARKET_DEFAULT_SECTIONS["en-US"])]
     if industry:
         priority = industry.get("layout_hints", {}).get("sections_priority")
@@ -150,4 +163,11 @@ def layout_for_market(market: str, industry: dict | None = None) -> list[dict]:
             # 只重排默认布局中已有的 type(不引入行业不支持的组件)
             order = {t: i for i, t in enumerate(priority)}
             base.sort(key=lambda s: order.get(s["type"], 99))
+    sig = MARKET_SIGNATURE_SECTIONS.get(market, set())
+    if sig:
+        leads = [s for s in base if s["type"] in sig]
+        rest = [s for s in base if s["type"] not in sig]
+        hero = next((s for s in rest if s["type"] == "hero"), None)
+        rest = [s for s in rest if s["type"] != "hero"]
+        base = ([hero] if hero else []) + leads + rest
     return base

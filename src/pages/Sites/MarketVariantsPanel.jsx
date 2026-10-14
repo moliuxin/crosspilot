@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { api } from '../../services/api'
 import { useApp } from '../../app/store/AppContext'
 import { renderLayout } from '../../components/site-blocks'
+import FreehandBrushOverlay from './FreehandBrushOverlay'
 import './market-variants.css'
 
 const MARKET_META = {
@@ -70,6 +71,9 @@ export default function MarketVariantsPanel({ siteId }) {
   const [versionInfo, setVersionInfo] = useState(null)
   const [imgStatus, setImgStatus] = useState(null)
   const [regenBusy, setRegenBusy] = useState(false)
+  // Freehand AI Brush:lasso 模式 + 已确认的圈选数据(spec 5.3)
+  const [lassoMode, setLassoMode] = useState(false)
+  const [lassoSel, setLassoSel] = useState(null)   // {selection_mode, polygon_points, bounding_box, section_hint, market, strokes}
   const pollRef = useRef(null)
 
   const load = useCallback(() => {
@@ -153,9 +157,11 @@ export default function MarketVariantsPanel({ siteId }) {
     setBrushBusy(true)
     setBrushResult(null)
     try {
-      const res = await api.brushGenerate(siteId, selected.market, selected.sectionId, instruction.trim())
+      const res = await api.brushGenerate(
+        siteId, selected.market, selected.sectionId, instruction.trim(), lassoSel || undefined)
       setBrushResult(res)
-      toast(`草稿已生成(${res.ai_source === 'glm' ? 'GLM' : '模板'}),确认后才发布`, 'success')
+      const hint = res.selection?.section_hint
+      toast(`草稿已生成(${res.ai_source === 'glm' ? 'GLM' : '模板'}),圈选命中:${hint || selected.sectionId};确认后才发布`, 'success')
     } catch (e) {
       const status = e?.status
       if (status === 403) {
@@ -196,6 +202,17 @@ export default function MarketVariantsPanel({ siteId }) {
 
   return (
     <section className="panel mv-panel">
+      {lassoMode && (
+        <FreehandBrushOverlay
+          onExit={() => setLassoMode(false)}
+          onConfirm={(sel) => {
+            setLassoSel(sel)
+            setSelected({ market: sel.market, sectionId: sel.section_hint, type: 'lasso' })
+            setLassoMode(false)
+            toast(`圈选已确认:${sel.market} · ${sel.section_hint}(${sel.polygon_points.length} 点)`, 'success')
+          }}
+        />
+      )}
       <div className="panel-head">
         <div>
           <h3>市场变体 · Market Variants(结构级)</h3>
@@ -222,10 +239,19 @@ export default function MarketVariantsPanel({ siteId }) {
       {/* AI 画笔操作条 */}
       <div className="brush-bar">
         <span className="brush-sel">
-          🖌 AI 画笔:{selected
-            ? `${MARKET_META[selected.market]?.flag || ''} ${selected.market} · ${selected.type} (${selected.sectionId})`
-            : '点击下方任一区块选中'}
+          🖌 AI 画笔:{lassoSel
+            ? `✏️ 已圈选 ${MARKET_META[lassoSel.market]?.flag || ''} ${lassoSel.market} · ${lassoSel.section_hint}(${lassoSel.selection_mode},${lassoSel.polygon_points.length} 点)`
+            : selected
+              ? `${MARKET_META[selected.market]?.flag || ''} ${selected.market} · ${selected.type} (${selected.sectionId})`
+              : '点击区块,或开启自由圈选'}
         </span>
+        <button
+          className={`ghost-btn${lassoMode ? ' on' : ''}`}
+          onClick={() => { setLassoMode((m) => !m); if (lassoMode) { /* 退出即清选区 */ } }}
+          title="自由手绘圈选任意区域(ESC 退出)"
+        >
+          {lassoMode ? '⏹ 退出圈选' : '✏️ 自由圈选'}
+        </button>
         <input
           className="brush-input"
           placeholder="例:更适合俄罗斯系统集成商,突出 10kg 负载、稳定供货和技术支持"
@@ -294,8 +320,12 @@ export default function MarketVariantsPanel({ siteId }) {
                   <div
                     key={s.id}
                     className={`mv-section${selected?.market === v.market && selected?.sectionId === s.id ? ' sel' : ''}`}
-                    onClick={() => setSelected({ market: v.market, sectionId: s.id, type: s.type })}
-                    title="点击选中,供 AI 画笔修改"
+                    data-brush-target={`${v.market}|${s.id}`}
+                    onClick={() => {
+                      if (lassoMode) return  // 圈选模式下由 overlay 接管指针
+                      setSelected({ market: v.market, sectionId: s.id, type: s.type })
+                    }}
+                    title={lassoMode ? '自由圈选模式:在上方拖动绘制选区' : '点击选中,供 AI 画笔修改'}
                   >
                     {renderLayout([s], { designTokens: tokens, market: v.market, locale: v.locale })}
                   </div>

@@ -22,6 +22,25 @@
 .mv-img-chip.ok { background: #f0fdf4; border-color: #bbf7d0; color: #15803d; font-weight: 600; }
 .mv-img-reason { padding-left: 4px; }
 
+/* Freehand AI Brush 圈选层(spec 5.1-5.2) */
+.fb-overlay { position: fixed; inset: 0; z-index: 3000; cursor: crosshair; touch-action: none; }
+.fb-overlay svg.fb-mask { position: absolute; inset: 0; pointer-events: none; }
+.fb-poly { fill: rgba(34, 211, 238, 0.12); stroke: #22d3ee; stroke-width: 2.5; stroke-linejoin: round;
+  filter: drop-shadow(0 0 6px rgba(34, 211, 238, 0.85)) drop-shadow(0 0 14px rgba(28, 200, 255, 0.45)); }
+.fb-poly-active { stroke-dasharray: 7 5; }
+.fb-toolbar { position: fixed; top: 14px; left: 50%; transform: translateX(-50%);
+  display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-radius: 12px;
+  background: rgba(15, 23, 42, 0.92); color: #e2e8f0; font-size: 12.5px;
+  box-shadow: 0 8px 28px rgba(2, 8, 20, 0.45); border: 1px solid rgba(34, 211, 238, 0.35); cursor: default; }
+.fb-toolbar .fb-title { font-weight: 700; color: #67e8f9; margin-right: 4px; }
+.fb-toolbar .fb-modes { display: flex; gap: 4px; margin-right: 4px; }
+.fb-toolbar button { padding: 5px 10px; border-radius: 8px; border: 1px solid rgba(148, 163, 184, 0.35);
+  background: rgba(30, 41, 59, 0.85); color: #e2e8f0; font-size: 12px; cursor: pointer; }
+.fb-toolbar button:hover:not(:disabled) { border-color: #22d3ee; color: #a5f3fc; }
+.fb-toolbar button.on { background: #164e63; border-color: #22d3ee; color: #a5f3fc; font-weight: 600; }
+.fb-toolbar button:disabled { opacity: 0.4; cursor: not-allowed; }
+.brush-bar .ghost-btn.on { border-color: #22d3ee; color: #0e7490; background: #ecfeff; font-weight: 600; }
+
 /* PHASE 8 产品图库 */
 .pg-wrap { display: flex; gap: 14px; flex-wrap: wrap; }
 .pg-main { flex: 1 1 320px; min-width: 260px; position: relative; border: 1px solid #e3e8ef; border-radius: 12px; overflow: hidden; background: #f6f8fb; }

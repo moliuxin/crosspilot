@@ -81,7 +81,7 @@ async def generate_variants(db, tenant_id: int, site: models.Site, *, regenerate
             continue
         ctx = SkillContext(tenant_id=tenant_id, site_id=site.id, market=market)
 
-        theme, _ = await registry.run("theme_style", ctx, {"industry": industry_id}, db=db, deduct_credits=False)
+        theme, _ = await registry.run("theme_style", ctx, {"industry": industry_id, "market": market}, db=db, deduct_credits=False)
         layout, _ = await registry.run("layout_planning", ctx,
                                        {"market": market, "product_category": category, "industry": industry_id},
                                        db=db, deduct_credits=False)
