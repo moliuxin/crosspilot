@@ -39,6 +39,37 @@ export default function Globe3D({ markets = 6 }) {
 }
 
 const BASE = `${import.meta.env.BASE_URL}assets/globe/`
+
+/** 大陆点阵:fetch 贴图 → 离屏 canvas 采样陆地掩码 → 球面亮蓝点 positions。
+ *  独立异步(不依赖 TextureLoader 回调时序);THREE 由调用方传入;失败仅告警。 */
+async function buildDotPositions(THREE, R = 2.208) {
+  const r = await fetch(BASE + 'earth-day.webp')
+  const bmp = await createImageBitmap(await r.blob())
+  const c = document.createElement('canvas')
+  c.width = 256; c.height = 128
+  const ctx = c.getContext('2d', { willReadFrequently: true })
+  ctx.drawImage(bmp, 0, 0, 256, 128)
+  const px = ctx.getImageData(0, 0, 256, 128).data
+  const pts = []
+  for (let lat = -84; lat <= 84; lat += 1.15) {
+    const ringR = Math.cos(lat * Math.PI / 180)
+    const step = 1.15 / Math.max(ringR, 0.28)
+    for (let lon = -180; lon < 180; lon += step) {
+      const u = Math.floor((lon + 180) / 360 * 256)
+      const v = Math.floor((90 - lat) / 180 * 128)
+      const idx = (v * 256 + u) * 4
+      const bright = (px[idx] + px[idx + 1] + px[idx + 2]) / 3
+      if (bright > 70) { // 陆地掩码(阈值放宽:海岸线/浅海也点亮,更接近参考图密度)
+        const p = ll(lat, lon, R)
+        pts.push(p.x, p.y, p.z)
+      }
+    }
+  }
+  const g = new THREE.BufferGeometry()
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pts, 3))
+  return g
+}
+
 const HUB = ll(30, 105)
 const TARGETS = [
   {lat:55.75,lon:37.6},{lat:51.5,lon:-0.1},{lat:40.7,lon:-74},{lat:1.35,lon:103.8},
@@ -71,19 +102,20 @@ function buildGlobe(THREE, host, { reduced, mobile, arcs, EffectComposer, Render
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, mobile ? 1.0 : 1.5))
   renderer.setSize(W(), H())
   renderer.toneMapping = THREE.ACESFilmicToneMapping
-  renderer.toneMappingExposure = 2.4
+  renderer.toneMappingExposure = 1.15
   renderer.outputColorSpace = THREE.SRGBColorSpace
   host.appendChild(renderer.domElement)
 
   const scene = new THREE.Scene()
-  const camera = new THREE.PerspectiveCamera(32, W()/H(), 0.1, 100)
-  // 完整球体构图(参考图1):相机拉远,地球整体悬浮于画面中,四周透出背景
-  // (旧 z=4.5 时地球表面特写占满 canvas,在雪山背景上呈现为一块黑色矩形)
-  camera.position.set(0.4, 0.35, 9)
+  const camera = new THREE.PerspectiveCamera(40, W()/H(), 0.1, 100)
+  // 完整球体构图(参考图1):FOV 放宽 + 相机适中,球体完整且装饰元素(丝线/环/点阵)保持可见
+  camera.position.set(0.4, 0.35, 7)
   camera.lookAt(0, 0, 0)
 
   const root = new THREE.Group()
   root.position.x = 0.4
+  // 初始相位:欧亚非大陆(点阵最密区+hub)朝向相机;自转在此基础上继续累加
+  root.rotation.y = 1.0
   scene.add(root)
 
   const loader = new THREE.TextureLoader()
@@ -103,26 +135,39 @@ function buildGlobe(THREE, host, { reduced, mobile, arcs, EffectComposer, Render
   const earth = new THREE.Mesh(
     new THREE.SphereGeometry(2.2, mobile ? 64 : 128, mobile ? 48 : 96),
     new THREE.MeshStandardMaterial({
-      map: dayTex,
-      normalMap: normalTex,
-      normalScale: new THREE.Vector2(0.6, 0.6),
-      roughnessMap: specTex,
-      roughness: 0.55,
-      metalness: 0.08,
-      emissiveMap: nightTex,
-      emissive: new THREE.Color(0xffcc88),
-      emissiveIntensity: 0.45,
+      // 图1 风格:纯深蓝球体打底,大陆用点阵发光层呈现(见下方 dot matrix)
+      color: new THREE.Color(0x0a1c38),
+      roughness: 0.7,
+      metalness: 0.1,
+      emissive: new THREE.Color(0x0a2c5c),
+      emissiveIntensity: 0.55,
     }),
   )
-  // 初始转到「亚洲日面」朝向相机(参考图1:亮蓝日面 + 城市灯共存,而非整球夜面)
-  earth.rotation.y = -0.9
   root.add(earth)
 
-  /* ---- 2. Cloud Layer(独立透明球,异速旋转) ---- */
+  /* ---- 1b. 大陆点阵(异步:fetch 贴图采样陆地 → 亮蓝点,图1 核心质感) ---- */
+  buildDotPositions(THREE).then((geo) => {
+    // 注意:此处不能引用组件作用域的 disposed(buildGlobe 作用域不可见),
+    // 组件卸载时 cleanup 会移除 host,晚到的 dots 加到游离 root 无副作用
+    const dots = new THREE.Points(geo, new THREE.PointsMaterial({
+      color: 0x6cc4ff, size: 3, sizeAttenuation: false, // 固定像素大小,远相机下仍清晰
+      transparent: true, opacity: 0.95,
+      blending: THREE.AdditiveBlending, depthWrite: false,
+    }))
+    // 初始相位:把亚欧大陆(lon≈105E,hub 所在)转到面向相机
+    dots.rotation.y = 1.3
+    root.add(dots)
+    host.dataset.dotOk = String(geo.getAttribute('position').count)
+  }).catch((e) => { host.dataset.dotErr = String((e && e.message) || e).slice(0, 200) })
+
+  // 城市灯层已移除:ice-blue 处理过的 night 贴图整体偏亮,additive 会把整球加白。
+  // 大陆质感由点阵层承担,光点由节点脉冲承担。
+
+  /* ---- 2. Cloud Layer(独立透明球,异速旋转;低不透明度避免盖过点阵) ---- */
   const cloudMat = new THREE.MeshStandardMaterial({
     color: 0xcfe8ff,
     transparent: true,
-    opacity: mobile ? 0.06 : 0.10,
+    opacity: mobile ? 0.03 : 0.055,
     roughness: 1, metalness: 0,
     depthWrite: false,
   })
@@ -132,11 +177,11 @@ function buildGlobe(THREE, host, { reduced, mobile, arcs, EffectComposer, Render
   )
   root.add(clouds)
 
-  /* ---- 3. Atmosphere(3层 Fresnel) ---- */
+  /* ---- 3. Atmosphere(3层 Fresnel,图1 亮青色外发光) ---- */
   const atmos = [
-    {r:2.25, color:[0.25,0.65,1.0], intensity:0.32, power:2.4},
-    {r:2.32, color:[0.15,0.45,0.95], intensity:0.18, power:2.8},
-    {r:2.46, color:[0.35,0.25,0.80], intensity:0.08, power:3.2},
+    {r:2.25, color:[0.30,0.75,1.0], intensity:0.5, power:2.2},
+    {r:2.34, color:[0.20,0.55,1.0], intensity:0.26, power:2.6},
+    {r:2.52, color:[0.40,0.35,1.0], intensity:0.12, power:3.0},
   ].map(({r,color,intensity,power}) => {
     const mat = new THREE.ShaderMaterial({
       vertexShader: FRESNEL_VERT, fragmentShader: FRESNEL_FRAG,
@@ -180,37 +225,50 @@ function buildGlobe(THREE, host, { reduced, mobile, arcs, EffectComposer, Render
     new THREE.MeshBasicMaterial({color:0xf8d9a8, blending:THREE.AdditiveBlending, depthWrite:false}))
   hubCore.position.set(hubP.x, hubP.y, hubP.z); root.add(hubCore)
 
-  /* ---- 6. Trade Arcs + Flow Particles ---- */
+  /* ---- 6. Trade Arcs + Flow Particles(图1 式发光丝线:hub 放射 + 节点互联) ---- */
   const flows = []
-  const arcColors = [0x37D9FF, 0x4F8FFF, 0x856AFF, 0x37D9FF, 0x4F8FFF, 0xFFDDA0]
-  targets.forEach((m, i) => {
-    const t = ll(m.lat, m.lon, 2.20)
-    const mid = {x:(hubP.x+t.x)/2, y:(hubP.y+t.y)/2, z:(hubP.z+t.z)/2}
+  const arcMat = (op) => new THREE.MeshBasicMaterial({
+    color: 0x49c6ff, transparent: true, opacity: op,
+    blending: THREE.AdditiveBlending, depthWrite: false,
+  })
+  const makeArc = (a, b, liftScale, op, seed) => {
+    const mid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2, z: (a.z + b.z) / 2 }
     const l = Math.hypot(mid.x, mid.y, mid.z) || 1
-    const dist = Math.hypot(hubP.x-t.x, hubP.y-t.y, hubP.z-t.z)
-    const lift = 2.2 + (0.15 + i*0.04) * dist
+    const dist = Math.hypot(a.x - b.x, a.y - b.y, a.z - b.z)
+    const lift = 2.2 + liftScale * (0.12 + (seed % 5) * 0.035) * dist
     const curve = new THREE.QuadraticBezierCurve3(
-      new THREE.Vector3(hubP.x, hubP.y, hubP.z),
-      new THREE.Vector3(mid.x/l*lift, mid.y/l*lift, mid.z/l*lift),
-      new THREE.Vector3(t.x, t.y, t.z),
+      new THREE.Vector3(a.x, a.y, a.z),
+      new THREE.Vector3(mid.x / l * lift, mid.y / l * lift, mid.z / l * lift),
+      new THREE.Vector3(b.x, b.y, b.z),
     )
-    root.add(new THREE.Line(
-      new THREE.BufferGeometry().setFromPoints(curve.getPoints(50)),
-      new THREE.LineBasicMaterial({color:arcColors[i%arcColors.length], transparent:true, opacity:0.10, blending:THREE.AdditiveBlending, depthWrite:false}),
-    ))
-    for (let j=0; j<3; j++) {
-      const p = new THREE.Mesh(new THREE.SphereGeometry(0.007, 8, 6),
-        new THREE.MeshBasicMaterial({color:0xd0f0ff, transparent:true, opacity:0.85, blending:THREE.AdditiveBlending, depthWrite:false}))
-      p.userData = {curve, offset:(i*3+j)*0.13, speed:0.035+j*0.008}
+    const tube = new THREE.Mesh(
+      new THREE.TubeGeometry(curve, 40, 0.009 + (seed % 3) * 0.003, 6, false),
+      arcMat(op),
+    )
+    root.add(tube)
+    for (let j = 0; j < 4; j++) {
+      const p = new THREE.Mesh(new THREE.SphereGeometry(0.008, 8, 6),
+        new THREE.MeshBasicMaterial({ color: 0xbfeaff, transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending, depthWrite: false }))
+      p.userData = { curve, offset: (seed * 4 + j) * 0.09, speed: 0.03 + j * 0.007 }
       root.add(p); flows.push(p)
     }
+  }
+  targets.forEach((m, i) => {
+    makeArc(hubP, ll(m.lat, m.lon, 2.20), 1.0, 0.30, i)          // hub 放射
   })
+  // 节点互联丝线(图1 的密集网状光弧)
+  for (let i = 0; i < targets.length; i++) {
+    for (let j = i + 1; j < targets.length; j++) {
+      if ((i + j) % 2 === 0) makeArc(ll(targets[i].lat, targets[i].lon, 2.20), ll(targets[j].lat, targets[j].lon, 2.20), 1.4, 0.16, i + j * 3)
+    }
+  }
 
-  /* ---- 7. Orbital Rings ---- */
+  /* ---- 7. Orbital Rings(图1:多层光带环绕) ---- */
   const orbitRings = []
-  ;[{r:2.8,tilt:0.30,rotZ:0.1,op:0.08},{r:3.1,tilt:-0.20,rotZ:-0.15,op:0.05},{r:2.95,tilt:0.50,rotZ:0.25,op:0.06}].forEach(({r,tilt,rotZ,op},i) => {
-    const ring = new THREE.Mesh(new THREE.TorusGeometry(r, 0.004, 8, 120),
-      new THREE.MeshBasicMaterial({color:i===1?0x856AFF:0x37D9FF, transparent:true, opacity:op, blending:THREE.AdditiveBlending, depthWrite:false}))
+  ;[{r:2.75,tilt:0.30,rotZ:0.1,op:0.16,c:0x37D9FF},{r:3.05,tilt:-0.20,rotZ:-0.15,op:0.10,c:0x4F8FFF},
+    {r:2.92,tilt:0.50,rotZ:0.25,op:0.12,c:0x856AFF},{r:3.35,tilt:0.08,rotZ:0.4,op:0.07,c:0x37D9FF}].forEach(({r,tilt,rotZ,op,c},i) => {
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(r, 0.006, 8, 140),
+      new THREE.MeshBasicMaterial({color:c, transparent:true, opacity:op, blending:THREE.AdditiveBlending, depthWrite:false}))
     ring.rotation.x = Math.PI/2 + tilt; ring.rotation.z = rotZ
     root.add(ring); orbitRings.push(ring)
     const sat = new THREE.Mesh(new THREE.SphereGeometry(0.011, 8, 6),
@@ -239,10 +297,10 @@ function buildGlobe(THREE, host, { reduced, mobile, arcs, EffectComposer, Render
   }
 
   /* ---- 9. Lighting ---- */
-  scene.add(new THREE.AmbientLight(0x9cc4e8, 1.6))
-  const key = new THREE.DirectionalLight(0xffffff, 4.6); key.position.set(2, 3, 9); scene.add(key)
-  const rim = new THREE.DirectionalLight(0x856AFF, 0.4); rim.position.set(-3, -0.5, -2); scene.add(rim)
-  const fill = new THREE.DirectionalLight(0x37D9FF, 0.6); fill.position.set(-1, 2, 1); scene.add(fill)
+  scene.add(new THREE.AmbientLight(0x9cc4e8, 0.5))
+  const key = new THREE.DirectionalLight(0xffffff, 1.5); key.position.set(2, 3, 9); scene.add(key)
+  const rim = new THREE.DirectionalLight(0x856AFF, 0.3); rim.position.set(-3, -0.5, -2); scene.add(rim)
+  const fill = new THREE.DirectionalLight(0x37D9FF, 0.35); fill.position.set(-1, 2, 1); scene.add(fill)
 
   /* ---- 10. Bloom(已禁用) ----
    * EffectComposer/UnrealBloomPass 在 alpha canvas 上输出不透明黑底

@@ -127,6 +127,7 @@ export default function GlobeIntro() {
               <div className="nh-mk3-flag">{m.flag} {m.t}</div>
               <img src={m.img} alt={`${m.t} — CrossPilot 真实生成的市场变体`} loading="lazy" />
               <ul>{m.pts.map((p) => <li key={p}>{p}</li>)}</ul>
+              <span className="nh-mk3-badge">{m.flag} {m.t}</span>
             </figure>
           ))}
         </div>
@@ -240,10 +241,12 @@ function MkSection({ id, flip, eyebrow, title, desc, points, cta, onCta, shot, s
           {note && <p className="nh-note">{note}</p>}
           {cta && <button className="nh-btn xl" onClick={onCta}>{cta}</button>}
         </div>
-        <figure className="nh-shot">
-          <img src={shot} alt={shotAlt} loading="lazy" />
-          <figcaption>{shotAlt}</figcaption>
-        </figure>
+        <div className="nh-shot-wrap">
+          <figure className="nh-shot">
+            <img src={shot} alt={shotAlt} loading="lazy" />
+            <figcaption>{shotAlt}</figcaption>
+          </figure>
+        </div>
       </div>
     </section>
   )
