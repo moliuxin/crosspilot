@@ -82,42 +82,54 @@ export default function Inquiries() {
       toast('请填写跟进事项', 'warn')
       return
     }
-    const task = await api.createTask({
-      kind: 'followup',
-      title: taskForm.title.trim(),
-      detail: taskForm.detail.trim(),
-      inquiry_id: active?.id || '',
-      due_at: taskForm.due_at,
-      steps: [
-        { label: '整理客户需求与参数', done: false },
-        { label: '发送报价 / 产品资料', done: false },
-        { label: '确认客户反馈并推进', done: false },
-      ],
-    })
-    setTasks((prev) => [task, ...prev])
-    setTaskOpen(false)
-    setTaskForm({ title: '', detail: '', due_at: '' })
-    if (active) {
-      // 关联询盘时后端会把状态推进到 contacted
-      setData((d) => ({
-        ...d,
-        inquiries: d.inquiries.map((i) => (i.id === active.id && i.status === 'new' ? { ...i, status: 'contacted' } : i)),
-      }))
-      setActive((a) => (a && a.status === 'new' ? { ...a, status: 'contacted' } : a))
+    try {
+      const task = await api.createTask({
+        kind: 'followup',
+        title: taskForm.title.trim(),
+        detail: taskForm.detail.trim(),
+        inquiry_id: active?.id || '',
+        due_at: taskForm.due_at,
+        steps: [
+          { label: '整理客户需求与参数', done: false },
+          { label: '发送报价 / 产品资料', done: false },
+          { label: '确认客户反馈并推进', done: false },
+        ],
+      })
+      setTasks((prev) => [task, ...prev])
+      setTaskOpen(false)
+      setTaskForm({ title: '', detail: '', due_at: '' })
+      if (active) {
+        // 关联询盘时后端会把状态推进到 contacted
+        setData((d) => ({
+          ...d,
+          inquiries: d.inquiries.map((i) => (i.id === active.id && i.status === 'new' ? { ...i, status: 'contacted' } : i)),
+        }))
+        setActive((a) => (a && a.status === 'new' ? { ...a, status: 'contacted' } : a))
+      }
+      toast('跟进任务已创建(已落库,刷新不丢)')
+    } catch (e) {
+      toast(`创建失败:${e?.detail?.message || e?.message || '后端不可用'} — 跟进必须真实落库,不做本地假保存`, 'warn')
     }
-    toast('跟进任务已创建')
   }
 
   async function advanceTask(id) {
-    const updated = await api.advanceTask(id)
-    setTasks((prev) => prev.map((t) => (t.id === id ? updated : t)))
-    if (updated.status === 'done') toast('跟进任务已完成')
+    try {
+      const updated = await api.advanceTask(id)
+      setTasks((prev) => prev.map((t) => (t.id === id ? updated : t)))
+      if (updated.status === 'done') toast('跟进任务已完成')
+    } catch (e) {
+      toast(`更新失败:${e?.message || '请重试'}`, 'warn')
+    }
   }
 
   async function removeTask(id) {
-    await api.deleteTask(id)
-    setTasks((prev) => prev.filter((t) => t.id !== id))
-    toast('已删除跟进任务')
+    try {
+      await api.deleteTask(id)
+      setTasks((prev) => prev.filter((t) => t.id !== id))
+      toast('已删除跟进任务')
+    } catch (e) {
+      toast(`删除失败:${e?.message || '请重试'}`, 'warn')
+    }
   }
 
   const intentLabel = { hot: '高意向', warm: '跟进中', cold: '较低' }

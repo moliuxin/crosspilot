@@ -83,7 +83,10 @@ def test_generate_site_full_flow(free_client, db_session):
     # 图片资产:与类别相关 + 溯源
     assets = body["assets"]
     assert len(assets) >= 3
-    assert all(a["source_type"] == "AI_GENERATED" for a in assets)
+    # 诚实标注:mock provider 占位图 = FALLBACK;真实图像模型 = AI_GENERATED。
+    # 测试环境无图像 Key → 必须是 FALLBACK(绝不允许 mock 冒充 AI_GENERATED)
+    assert all(a["source_type"] == "FALLBACK" for a in assets)
+    assert all(a["provider"] == "mock" for a in assets)
     assert all("工业水泵" in a["prompt"] for a in assets), "图片 prompt 必须包含产品类别"
     assert any(a["market"] == "ru-RU" for a in assets) and any(a["market"] == "zh-CN" for a in assets)
     # 禁止伪造事实元素进入 prompt

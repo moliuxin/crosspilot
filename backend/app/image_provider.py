@@ -54,14 +54,18 @@ def _svg_data_url(subject: str, scene: str, market: str) -> str:
         f"<circle cx='160' cy='440' r='110' fill='rgba(255,255,255,0.06)'/>"
         f"<text x='48' y='270' font-family='Arial' font-size='34' fill='white' font-weight='700'>{text}</text>"
         f"<text x='48' y='312' font-family='Arial' font-size='18' fill='rgba(255,255,255,0.75)'>{scene[:52]}</text>"
-        f"<text x='48' y='500' font-family='Arial' font-size='14' fill='rgba(255,255,255,0.55)'>AI-GENERATED · Mock Provider</text>"
+        f"<text x='48' y='500' font-family='Arial' font-size='14' fill='rgba(255,255,255,0.55)'>PLACEHOLDER · Mock Provider</text>"
         f"</svg>"
     )
     return "data:image/svg+xml;base64," + base64.b64encode(svg.encode("utf-8")).decode()
 
 
 class MockImageProvider(ImageProvider):
-    """确定性占位实现（无外部依赖；视觉按市场区分）。"""
+    """确定性占位实现（无外部依赖；视觉按市场区分）。
+
+    诚实性规则:SVG 占位图一律标注 FALLBACK,绝不冒充 AI_GENERATED ——
+    否则界面显示"AI 图片"而实际是灰渐变占位(浏览器里看似无真图)。
+    """
 
     name = "mock"
 
@@ -69,7 +73,7 @@ class MockImageProvider(ImageProvider):
         return {
             "url": _svg_data_url(subject, prompt[:80], market),
             "provider": "mock",
-            "source_type": "AI_GENERATED",
+            "source_type": "FALLBACK",
         }
 
     def health(self) -> dict[str, Any]:

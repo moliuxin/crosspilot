@@ -496,8 +496,13 @@ function RfqSection({ market, t, template, section }) {
     setErrors(errs)
     if (Object.keys(errs).length) return
     setSending(true)
-    // RFQ 是唯一允许匿名的写入：带上租户标识，询盘落进对应企业的后台
-    await api.createInquiry(form, tenantSlug)
+    // RFQ 是唯一允许匿名的写入：带上租户标识 + 市场来源(J3),询盘落进对应企业的后台
+    await api.createInquiry({
+      ...form,
+      market: market || '',
+      source_page: `${window.location.pathname}${window.location.hash || '#rfq'}`.slice(0, 200),
+      source_cta: sp.cta || t.submit || 'Submit RFQ',
+    }, tenantSlug)
     setSending(false)
     setDone(true)
   }

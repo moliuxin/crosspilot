@@ -26,7 +26,7 @@ def _is_readonly_command(command) -> bool:
     if not c:
         return False
     # 修改类关键词优先判定为非只读
-    if any(k in c for k in ("俄语", "本地化", "多语言", "local", "中文", "回滚", "rollback", "优化", "改写", "生成")):
+    if any(k in c for k in ("俄语", "俄文", "俄罗斯", "русск", "ru-ru", "本地化", "多语言", "local", "中文", "回滚", "rollback", "优化", "改写", "生成")):
         return False
     return any(k in c for k in _READONLY_HINTS)
 
@@ -73,6 +73,50 @@ def _run_structured(command: dict, db: Session, tid: int) -> dict:
 
 def _run_nl(text: str, db: Session, tid: int) -> dict:
     c = (text or "").lower()
+
+    # 组合任务(规范 J):「找出 SEO 最低的产品 → 优化成俄罗斯市场版本 → 草稿待确认」
+    # 必须排在只读 SEO 查询之前:命令同时含"优化/seo"会被查询分支截胡
+    if any(k in c for k in ("俄语", "俄文", "俄罗斯", "русск", "ru-ru")) and any(k in c for k in ("最低", "最差", "seo", "评分")):
+        products = (
+            db.query(models.Product)
+            .filter(models.Product.tenant_id == tid)
+            .order_by(models.Product.seo_score.asc())
+            .limit(5)
+            .all()
+        )
+        if not products:
+            return {"ok": True, "summary": "当前没有产品，请先在产品中心添加产品。", "requiresConfirmation": False}
+        worst = products[0]
+        seo = dict(worst.seo or {})
+        ru_title = f"{worst.name} — промышленный поставщик | {worst.model}".strip(" |")
+        draft = _new_draft(
+            db,
+            tid,
+            title=f"{worst.name} 俄语市场优化草稿",
+            entity_type="product",
+            entity_id=worst.id,
+            market="ru-RU",
+            seo_score_before=worst.seo_score,
+            seo_score_after=min(97, worst.seo_score + 20),
+            diff=[
+                {"field": "seo.title(ru-RU)", "before": seo.get("title", ""), "after": ru_title},
+                {"field": "localized_content.ru-RU", "before": "—",
+                 "after": "技术参数前置 + 供货能力 + ГОСТ/EAC 信任元素(结构化适配,非翻译)"},
+            ],
+            patch={"seo": {**seo, "title": ru_title},
+                   "localized_content": {**(worst.localized_content or {}),
+                                          "ru-RU": {"strategy": "specs-first", "cta": "Запросить цену"}}},
+        )
+        return {
+            "ok": True,
+            "summary": (
+                f"SEO 最低 5 个产品已按得分升序排列,选第一个「{worst.name}」(SEO {worst.seo_score} 分)"
+                "已生成俄语市场优化草稿,请确认后发布:"
+            ),
+            "table": [{"a": p.name, "b": p.model, "c": f"SEO {p.seo_score}"} for p in products],
+            "draft": draft.to_dict(),
+            "requiresConfirmation": True,
+        }
 
     # 查询类：直接返回真实数据库统计（按租户过滤）
     if any(k in c for k in ("询盘", "inquiry", "rfq")):

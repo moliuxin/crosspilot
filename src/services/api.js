@@ -951,16 +951,15 @@ export const api = {
   },
 
   /* ---------------- 任务（跟进 / 增长） ---------------- */
+  // 真实 CRUD 硬约束:跟进任务必须落库(task_items),绝不允许静默降级到
+  // localStorage —— 否则用户看到"已创建"、刷新后从后端拉取就"消失"。
 
   getTasks(params = {}) {
     const qs = new URLSearchParams(Object.entries(params).filter(([, v]) => v)).toString()
-    return withFallback(
-      () => http('GET', `/tasks${qs ? `?${qs}` : ''}`),
-      async () => {
-        await delay(180)
-        return loadDb().tasks || []
-      }
-    )
+    return http('GET', `/tasks${qs ? `?${qs}` : ''}`).then((r) => {
+      if (!r.ok) throw r.error
+      return r.data
+    })
   },
 
   /**
@@ -969,86 +968,35 @@ export const api = {
    */
   getTaskStats(kind) {
     const qs = kind ? `?kind=${encodeURIComponent(kind)}` : ''
-    return withFallback(
-      () => http('GET', `/tasks/stats/summary${qs}`),
-      async () => {
-        await delay(160)
-        const all = loadDb().tasks || []
-        const list = kind ? all.filter((t) => t.kind === kind) : all
-        const done = list.filter((t) => t.status === 'done').length
-        const doing = list.filter((t) => t.status === 'doing').length
-        return {
-          kind: kind || 'all',
-          total: list.length,
-          done,
-          doing,
-          todo: Math.max(list.length - done - doing, 0),
-          percent: list.length ? Math.round((done / list.length) * 100) : 0,
-        }
-      }
-    )
+    return http('GET', `/tasks/stats/summary${qs}`).then((r) => {
+      if (!r.ok) throw r.error
+      return r.data
+    })
   },
 
   async createTask(payload) {
-    return withFallback(
-      () => http('POST', '/tasks', payload),
-      async () => {
-        await delay(260)
-        const task = { id: uid('task'), status: 'todo', progress: 0, steps: [], owner: '我', updated_at: '刚刚', ...payload }
-        saveDb({ tasks: [task, ...(loadDb().tasks || [])] })
-        return { ok: true, task }
-      }
-    ).then((res) => res?.task || res)
+    const r = await http('POST', '/tasks', payload)
+    if (!r.ok) throw r.error
+    return r.data?.task || r.data
   },
 
   async updateTask(id, patch) {
-    return withFallback(
-      () => http('PUT', `/tasks/${id}`, patch),
-      async () => {
-        await delay(160)
-        const tasks = (loadDb().tasks || []).map((t) => (t.id === id ? { ...t, ...patch } : t))
-        saveDb({ tasks })
-        return { ok: true, task: tasks.find((t) => t.id === id) }
-      }
-    )
+    const r = await http('PUT', `/tasks/${id}`, patch)
+    if (!r.ok) throw r.error
+    return r.data
   },
 
   /** 推进任务：勾选下一个子步骤 / 循环状态 */
   async advanceTask(id) {
-    return withFallback(
-      () => http('POST', `/tasks/${id}/advance`),
-      async () => {
-        await delay(280)
-        const tasks = (loadDb().tasks || []).map((t) => {
-          if (t.id !== id) return t
-          const steps = [...(t.steps || [])]
-          if (steps.length) {
-            let done = false
-            for (const s of steps) if (!s.done) { s.done = true; done = true; break }
-            if (!done) steps.forEach((s) => { s.done = false })
-            const cnt = steps.filter((s) => s.done).length
-            const progress = Math.round((cnt / steps.length) * 100)
-            return { ...t, steps, progress, status: cnt === steps.length ? 'done' : cnt > 0 ? 'doing' : 'todo' }
-          }
-          const nxt = { todo: 'doing', doing: 'done', done: 'todo' }
-          const status = nxt[t.status] || 'doing'
-          return { ...t, status, progress: { todo: 0, doing: 50, done: 100 }[status] }
-        })
-        saveDb({ tasks })
-        return { ok: true, task: tasks.find((t) => t.id === id) }
-      }
-    )
+    const r = await http('POST', `/tasks/${id}/advance`)
+    if (!r.ok) throw r.error
+    return r.data?.task || r.data
   },
 
   async deleteTask(id) {
-    return withFallback(
-      () => http('DELETE', `/tasks/${id}`),
-      async () => {
-        await delay(160)
-        saveDb({ tasks: (loadDb().tasks || []).filter((t) => t.id !== id) })
-        return { ok: true, id }
-      }
-    )
+    const r = await http('DELETE', `/tasks/${id}`)
+    if (!r.ok) throw r.error
+    return r.data
   },
 
   /* ---------------- 额度（Skill 用量） ---------------- */

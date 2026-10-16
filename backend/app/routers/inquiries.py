@@ -62,6 +62,21 @@ def get_inquiry(inquiry_id: str, db: Session = Depends(get_db), tid: int = Depen
     return i.to_dict()
 
 
+@router.get("/{inquiry_id}/follow-ups")
+def list_inquiry_follow_ups(inquiry_id: str, db: Session = Depends(get_db), tid: int = Depends(tenant_scope)):
+    """某询盘的全部跟进任务(时间倒序)。任务本体存于 task_items(kind=followup),不建第二套表。"""
+    scoped_get(db, models.Inquiry, inquiry_id, tid, detail="询盘不存在")
+    items = (
+        db.query(models.TaskItem)
+        .filter(models.TaskItem.tenant_id == tid,
+                models.TaskItem.inquiry_id == inquiry_id,
+                models.TaskItem.kind == "followup")
+        .order_by(models.TaskItem.created_at.desc())
+        .all()
+    )
+    return {"ok": True, "follow_ups": [t.to_dict() for t in items]}
+
+
 @router.put("/{inquiry_id}")
 def update_status(inquiry_id: str, payload: schemas.InquiryStatusUpdate, db: Session = Depends(get_db), tid: int = Depends(tenant_scope)):
     i = scoped_get(db, models.Inquiry, inquiry_id, tid, detail="询盘不存在")
@@ -154,8 +169,15 @@ def create_inquiry(
         country=payload.country or "—",
         product_id=matched.id if matched else (products[0].id if products else None),
         product_name=matched.name if matched else "General RFQ",
-        source_page="/site-preview.html#rfq",
+        # RFQ 快照:固化提交时刻的产品型号与市场(产品后续修改不失真)
+        product_model_snapshot=matched.model if matched else "",
+        market_snapshot=payload.market or "",
+        source_page=payload.source_page or "/site-preview.html#rfq",
         source_channel="Website RFQ",
+        # 线索来源追踪:市场/语言/CTA
+        source_market=payload.market or "",
+        source_locale=payload.market or "",
+        source_cta=payload.source_cta or "",
         message=payload.message,
         status="new",
         intent="hot" if hot else "warm",

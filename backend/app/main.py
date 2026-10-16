@@ -80,9 +80,37 @@ async def lifespan(_: FastAPI):
         ensure_columns(db, "drafts", {
             "selection": "JSON DEFAULT '{}'::json",
         })
+        # RFQ 快照 + 线索来源追踪(jhworld J2/J3,增量列;老询盘保持空值兼容)
+        ensure_columns(db, "inquiries", {
+            "product_model_snapshot": "VARCHAR(128) DEFAULT ''",
+            "market_snapshot": "VARCHAR(16) DEFAULT ''",
+            "source_market": "VARCHAR(16) DEFAULT ''",
+            "source_locale": "VARCHAR(16) DEFAULT ''",
+            "source_cta": "VARCHAR(128) DEFAULT ''",
+        })
+        # 数据纠偏(幂等):mock SVG data-URL 曾被误标 AI_GENERATED → 一律 FALLBACK。
+        # 只动 assets 表溯源;变体 manifest/props 引用同名槽位,由 regenerate 重刷覆盖。
+        _fix_mock_asset_labels(db)
     finally:
         db.close()
     yield
+
+
+def _fix_mock_asset_labels(db) -> None:
+    """存量纠偏:data:image/svg 占位图不得标 AI_GENERATED(诚实性)。幂等。"""
+    from sqlalchemy import text
+
+    try:
+        r = db.execute(text(
+            "UPDATE assets SET source_type = 'FALLBACK' "
+            "WHERE source_type = 'AI_GENERATED' AND url LIKE 'data:image/svg%'"
+        ))
+        if r.rowcount:
+            logger.info("数据纠偏:%d 条 mock SVG 资产 AI_GENERATED → FALLBACK", r.rowcount)
+        db.commit()
+    except Exception as exc:  # noqa: BLE001 — 迁移失败不阻断启动
+        db.rollback()
+        logger.warning("mock 资产标注纠偏失败(可忽略):%s", str(exc)[:120])
 
 
 def _migrate_sqlite(db) -> None:

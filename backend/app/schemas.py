@@ -94,6 +94,10 @@ class InquiryCreate(BaseModel):
     company: str = Field(default="", max_length=255)
     country: str = Field(default="", max_length=128)
     message: str = Field(min_length=1, max_length=4000)
+    # 来源追踪(J3)/RFQ 快照(J2):可选,公开页按市场注入
+    market: str = Field(default="", max_length=16)
+    source_page: str = Field(default="", max_length=255)
+    source_cta: str = Field(default="", max_length=128)
 
 
 class InquiryStatusUpdate(BaseModel):

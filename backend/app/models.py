@@ -140,9 +140,16 @@ class Inquiry(Base):
 
     product_id: Mapped[str] = mapped_column(String(64), ForeignKey("products.id"), nullable=True)
     product_name: Mapped[str] = mapped_column(String(255), default="")
+    # RFQ 快照(jhworld J2):询盘落库时固化产品型号与市场,产品后续修改不失真
+    product_model_snapshot: Mapped[str] = mapped_column(String(128), default="")
+    market_snapshot: Mapped[str] = mapped_column(String(16), default="")
 
     source_page: Mapped[str] = mapped_column(String(255), default="")
     source_channel: Mapped[str] = mapped_column(String(128), default="Direct")
+    # 线索来源追踪(jhworld J3):哪个市场/语言/CTA 产生询盘
+    source_market: Mapped[str] = mapped_column(String(16), default="", index=True)
+    source_locale: Mapped[str] = mapped_column(String(16), default="")
+    source_cta: Mapped[str] = mapped_column(String(128), default="")
 
     message: Mapped[str] = mapped_column(Text, default="")
     status: Mapped[str] = mapped_column(String(32), default="new", index=True)  # new/contacted/following/done
@@ -160,8 +167,13 @@ class Inquiry(Base):
             "country": self.country,
             "product_id": self.product_id,
             "product_name": self.product_name,
+            "product_model_snapshot": self.product_model_snapshot,
+            "market_snapshot": self.market_snapshot,
             "source_page": self.source_page,
             "source_channel": self.source_channel,
+            "source_market": self.source_market,
+            "source_locale": self.source_locale,
+            "source_cta": self.source_cta,
             "message": self.message,
             "status": self.status,
             "intent": self.intent,

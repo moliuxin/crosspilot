@@ -218,8 +218,10 @@ export default function TemplatesPage() {
 function TemplateScrollPreview({ template: t }) {
   const [shot, setShot] = useState(null)
   useEffect(() => {
-    // 真实截图优先（webp → png），都没有则回落到结构化迷你页面
-    const candidates = [`template-assets/${t.slug}/preview-full.webp`, `template-assets/${t.slug}/preview-full.png`]
+    // 真实截图优先（webp → png），都没有则回落到结构化迷你页面。
+    // BASE_URL 前缀:子路径部署(GitHub Pages /crosspilot/)也能解析到 public 资产
+    const base = import.meta.env.BASE_URL || '/'
+    const candidates = [`${base}template-assets/${t.slug}/preview-full.webp`, `${base}template-assets/${t.slug}/preview-full.png`]
     let i = 0
     let dead = false
     const probe = () => {
