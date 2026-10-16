@@ -26,13 +26,14 @@ def test_rfq_snapshot_and_lead_source(client, db_session):
     pr = c.post("/api/products", json={"name": "CR-10 Robot", "model": "CR-10X", "category": "协作机器人"})
     assert pr.status_code in (200, 201), pr.text
 
-    # 公开 RFQ 提交(匿名,带市场与 CTA 来源)
+    # 公开 RFQ 提交(匿名,带市场/CTA/预算来源)
     r = client.post("/api/inquiries", json={
         "name": "Ivan", "email": "ivan@ru.co", "company": "Tech LLC",
         "message": "Need CR-10 quote for 5 units",
         "market": "ru-RU",
         "source_page": "/#/site/s-1/ru-RU/",
         "source_cta": "Запросить цену",
+        "budget_range": "USD 2k-5k",
     }, headers={"X-Tenant-Slug": "t-1-seed01"})
     assert r.status_code == 201, r.text
     inq = r.json()["inquiry"]
@@ -43,6 +44,8 @@ def test_rfq_snapshot_and_lead_source(client, db_session):
     assert inq["source_market"] == "ru-RU"
     assert inq["source_locale"] == "ru-RU"
     assert inq["source_cta"] == "Запросить цену"
+    # 预算范围(jhworld 吸收)
+    assert inq["budget_range"] == "USD 2k-5k"
 
     # 修改产品型号 → 历史询盘快照不变(J2 核心诉求)
     prod = c.get("/api/products").json()[-1]

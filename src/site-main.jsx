@@ -477,7 +477,7 @@ function LowerSection({ market, template, t, section }) {
 /* ---------------- RFQ ---------------- */
 // RFQ 表单：真实提交 → localStorage → 商家后台「询盘中心」可见（跨页面演示闭环）
 function RfqSection({ market, t, template, section }) {
-  const [form, setForm] = useState({ name: '', company: '', email: '', message: '' })
+  const [form, setForm] = useState({ name: '', company: '', email: '', budget: '', message: '' })
   const [errors, setErrors] = useState({})
   const [sending, setSending] = useState(false)
   const [done, setDone] = useState(false)
@@ -499,6 +499,7 @@ function RfqSection({ market, t, template, section }) {
     // RFQ 是唯一允许匿名的写入：带上租户标识 + 市场来源(J3),询盘落进对应企业的后台
     await api.createInquiry({
       ...form,
+      budget_range: form.budget || '',
       market: market || '',
       source_page: `${window.location.pathname}${window.location.hash || '#rfq'}`.slice(0, 200),
       source_cta: sp.cta || t.submit || 'Submit RFQ',
@@ -533,6 +534,7 @@ function RfqSection({ market, t, template, section }) {
             <input placeholder={t.company} aria-label={t.company} value={form.company} onChange={set('company')} />
             <input placeholder={t.email} aria-label={t.email} type="email" value={form.email} onChange={set('email')} className={errors.email ? 'invalid' : ''} />
             {errors.email && <small className="rfq-err">{errors.email}</small>}
+            <input placeholder={t.budgetPlaceholder || t.budget} aria-label={t.budget} value={form.budget} onChange={set('budget')} />
             <textarea placeholder={t.message} aria-label={t.message} rows={4} value={form.message} onChange={set('message')} className={errors.message ? 'invalid' : ''} />
             {errors.message && <small className="rfq-err">{errors.message}</small>}
             <button type="submit" disabled={sending}>{sending ? t.sending : t.submit}</button>

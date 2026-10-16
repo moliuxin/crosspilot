@@ -87,6 +87,7 @@ async def lifespan(_: FastAPI):
             "source_market": "VARCHAR(16) DEFAULT ''",
             "source_locale": "VARCHAR(16) DEFAULT ''",
             "source_cta": "VARCHAR(128) DEFAULT ''",
+            "budget_range": "VARCHAR(120) DEFAULT ''",
         })
         # 数据纠偏(幂等):mock SVG data-URL 曾被误标 AI_GENERATED → 一律 FALLBACK。
         # 只动 assets 表溯源;变体 manifest/props 引用同名槽位,由 regenerate 重刷覆盖。

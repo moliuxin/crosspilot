@@ -172,6 +172,8 @@ def create_inquiry(
         # RFQ 快照:固化提交时刻的产品型号与市场(产品后续修改不失真)
         product_model_snapshot=matched.model if matched else "",
         market_snapshot=payload.market or "",
+        # 预算范围(jhworld 吸收):访客选填
+        budget_range=payload.budget_range or "",
         source_page=payload.source_page or "/site-preview.html#rfq",
         source_channel="Website RFQ",
         # 线索来源追踪:市场/语言/CTA

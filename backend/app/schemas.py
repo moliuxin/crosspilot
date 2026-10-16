@@ -98,6 +98,8 @@ class InquiryCreate(BaseModel):
     market: str = Field(default="", max_length=16)
     source_page: str = Field(default="", max_length=255)
     source_cta: str = Field(default="", max_length=128)
+    # 预算范围(jhworld 吸收):访客选填,不做枚举限制
+    budget_range: str = Field(default="", max_length=120)
 
 
 class InquiryStatusUpdate(BaseModel):

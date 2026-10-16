@@ -143,6 +143,8 @@ class Inquiry(Base):
     # RFQ 快照(jhworld J2):询盘落库时固化产品型号与市场,产品后续修改不失真
     product_model_snapshot: Mapped[str] = mapped_column(String(128), default="")
     market_snapshot: Mapped[str] = mapped_column(String(16), default="")
+    # 预算范围(jhworld 吸收):B2B 询盘质量信号,访客选填
+    budget_range: Mapped[str] = mapped_column(String(120), default="")
 
     source_page: Mapped[str] = mapped_column(String(255), default="")
     source_channel: Mapped[str] = mapped_column(String(128), default="Direct")
@@ -169,6 +171,7 @@ class Inquiry(Base):
             "product_name": self.product_name,
             "product_model_snapshot": self.product_model_snapshot,
             "market_snapshot": self.market_snapshot,
+            "budget_range": self.budget_range,
             "source_page": self.source_page,
             "source_channel": self.source_channel,
             "source_market": self.source_market,
