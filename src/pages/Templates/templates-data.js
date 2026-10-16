@@ -11,6 +11,7 @@ export const TEMPLATES = [
   {
     id: 'industrial-pro',
     slug: 'industrial-pro',
+    demoSlug: 's-1-b9528a',
     name: 'Industrial Pro',
     industry: '机械 · B2B · 重工业',
     price: 299,
@@ -44,6 +45,7 @@ export const TEMPLATES = [
   {
     id: 'supplier-minimal',
     slug: 'supplier-minimal',
+    demoSlug: 's-1-18b564',
     name: 'Supplier Minimal',
     industry: '通用外贸 · 综合供应',
     price: 0,
@@ -73,6 +75,7 @@ export const TEMPLATES = [
   {
     id: 'russia-industrial',
     slug: 'russia-industrial',
+    demoSlug: 's-1-56abdf',
     name: 'Russia Industrial',
     industry: '俄语区 · 工业设备',
     price: 399,
@@ -104,6 +107,7 @@ export const TEMPLATES = [
   {
     id: 'food-export',
     slug: 'food-export',
+    demoSlug: 's-1-cca731',
     name: 'Food Export',
     industry: '食品 · 农产品出口',
     price: 259,
@@ -134,6 +138,7 @@ export const TEMPLATES = [
   {
     id: 'electronics-global',
     slug: 'electronics-global',
+    demoSlug: 's-1-cd90cb',
     name: 'Electronics Global',
     industry: '消费电子 · 电子元器件',
     price: 349,
@@ -165,6 +170,7 @@ export const TEMPLATES = [
   {
     id: 'building-materials-pro',
     slug: 'building-materials-pro',
+    demoSlug: 's-1-0d9eec',
     name: 'Building Materials Pro',
     industry: '建材 · 装饰材料',
     price: 329,

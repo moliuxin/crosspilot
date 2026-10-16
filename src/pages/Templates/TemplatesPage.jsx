@@ -129,6 +129,7 @@ export default function TemplatesPage() {
               <Link to={`/templates/${t.slug}`} className="tpl-preview" aria-label={`预览 ${t.name}`}>
                 <TemplateScrollPreview template={t} />
                 {t.popular ? <span className="tpl-hot">最受欢迎</span> : null}
+                {t.demoSlug ? <span className="tpl-ai-badge" title="由 CrossPilot Skill 流水线真实生成">✦ Skill 生成示例</span> : null}
                 <span className="tpl-shot-hint">悬停滚动预览整页 ↕</span>
               </Link>
               <div className="tpl-body">
@@ -145,6 +146,12 @@ export default function TemplatesPage() {
                 </div>
                 <div className="tpl-actions">
                   <Link className="ghost-btn" to={`/templates/${t.slug}`}>预览</Link>
+                  {t.demoSlug && (
+                    <a className="ai-demo-btn" href={`/#/site/${t.demoSlug}/en-US/`} target="_blank" rel="noreferrer"
+                      title="由 Skill 流水线(行业画像→主题→布局→Transcreation→视觉生成)真实生成的站点">
+                      ✦ AI 生成示例
+                    </a>
+                  )}
                   {!authed ? (
                     <button className="primary-btn" onClick={() => useTemplate(t)}>使用模板</button>
                   ) : owned ? (
