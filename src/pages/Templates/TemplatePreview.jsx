@@ -1,17 +1,43 @@
+import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { templateBySlug } from './templates-data'
+import { renderLayout } from '../../components/site-blocks'
+import { api } from '../../services/api'
 import './templates.css'
+import './../PublicMarketSite.css'
+
+const MARKET_META = {
+  'zh-CN': { flag: '🇨🇳', label: '中文' },
+  'en-US': { flag: '🇺🇸', label: 'English' },
+  'ru-RU': { flag: '🇷🇺', label: 'Русский' },
+}
 
 /**
  * 模板 Demo 预览（公开路由 /templates/:slug，无需登录）。
  *
- * - 按模板自己的 sections 结构渲染（不同模板 = 不同页面结构，不是换色）；
- * - 内容为 Demo 数据并明确标注（Truthfulness 规则：Demo 必须标注）；
- * - 登录后可「使用模板」创建网站；未登录先记录 intended_template 再去登录。
+ * 有 demoSlug 的模板（全部 6 个）：直接渲染 **Skill 流水线真实生成的站点**
+ * （行业画像→主题→布局→Transcreation→cogview 视觉），支持三市场切换——
+ * 三套布局/文案/图片由 SiteMarketVariant 独立持久化，不是翻译换色。
+ * 无 demoSlug 的模板回落静态 DemoSection（内容标注 Demo）。
+ * 「使用模板」登录后创建网站；未登录先记录 intended_template。
  */
 export default function TemplatePreview() {
   const { slug } = useParams()
   const t = templateBySlug(slug)
+  const [market, setMarket] = useState('en-US')
+  const [data, setData] = useState(null)
+  const [err, setErr] = useState('')
+
+  useEffect(() => {
+    if (!t?.demoSlug) return
+    setData(null); setErr('')
+    api.getPublicSite(t.demoSlug, market)
+      .then((d) => {
+        if (!d?.market_variant) throw new Error('该市场版本尚未生成')
+        setData(d)
+      })
+      .catch((e) => setErr(e?.message || '加载失败'))
+  }, [t?.demoSlug, market])
 
   if (!t) {
     return (
@@ -27,7 +53,6 @@ export default function TemplatePreview() {
   }
 
   function useTemplate() {
-    // 未登录：记录意图模板 → 登录后回到模板继续（不强制未登录用户注册）
     if (!localStorage.getItem('sitepilot.token')) {
       sessionStorage.setItem('sitepilot.intended_template', t.id)
       window.location.hash = '#/login'
@@ -36,6 +61,11 @@ export default function TemplatePreview() {
     window.location.hash = `#/sites/new?template=${t.id}`
   }
 
+  const markets = (t.market_tags || []).filter((m) => MARKET_META[m])
+  const v = data?.market_variant
+  const sections = v?.layout_schema?.sections || []
+  const tokens = v?.design_tokens || {}
+
   return (
     <div className="tpl-public-page">
       <header className="tpl-demo-topbar">
@@ -43,25 +73,66 @@ export default function TemplatePreview() {
           <span className="tpl-demo-logo" style={{ background: t.accent }}>{t.name.charAt(0)}</span>
           <div>
             <strong>{t.name}</strong>
-            <span>{t.industry} · Demo 预览</span>
+            <span>
+              {t.industry} · {t.demoSlug ? 'Skill 流水线真实生成(非静态模板)' : 'Demo 预览'}
+            </span>
           </div>
         </div>
         <div className="tpl-demo-actions">
-          <span className="site-status site-status-published">DEMO DATA</span>
+          {t.demoSlug && markets.length > 0 && (
+            <div className="tpl-market-switch">
+              {markets.map((m) => (
+                <button key={m} className={`tpl-mk-btn${m === market ? ' on' : ''}`}
+                  onClick={() => setMarket(m)}>
+                  {MARKET_META[m].flag} {MARKET_META[m].label}
+                </button>
+              ))}
+            </div>
+          )}
           <Link className="ghost-btn" to="/templates">← 返回商城</Link>
           <button className="primary-btn" onClick={useTemplate}>使用模板</button>
         </div>
       </header>
 
-      <div className="tpl-demo-stage" data-accent={t.id}>
-        {t.sections.map((sec, idx) => (
-          <DemoSection key={sec.id || idx} sec={sec} t={t} idx={idx} />
-        ))}
-        <footer className="tpl-demo-footer">
-          <span>© {new Date().getFullYear()} {t.name} Demo · 内容为演示数据（Demo / Test）</span>
-          <span>Powered by CrossPilot</span>
-        </footer>
-      </div>
+      {t.demoSlug ? (
+        <div className="tpl-live-stage">
+          {err && <div className="empty">{err}。<Link to="/templates" className="ghost-btn">返回商城</Link></div>}
+          {!err && !data && <div className="empty">加载 Skill 生成站点…</div>}
+          {!err && data && (
+            <div className="pub-site" style={{ background: tokens.bg || '#f7f8fa', color: tokens.text || '#182230' }}>
+              <div className="pub-head" style={{ background: tokens.primary || '#141a24', color: tokens.on_dark || '#e6ebf2' }}>
+                <b>{data.site?.name || t.name}</b>
+                <nav>
+                  {markets.map((m) => (
+                    <button key={m} className={`pub-lang${m === market ? ' on' : ''}`}
+                      style={m === market ? { background: tokens.accent || '#c2570c', color: tokens.on_accent || '#fff' } : {}}
+                      onClick={() => setMarket(m)}>
+                      {MARKET_META[m].flag} {MARKET_META[m].label}
+                    </button>
+                  ))}
+                </nav>
+              </div>
+              {sections.length ? renderLayout(sections, { designTokens: tokens, market, locale: v.locale }) : (
+                <div className="empty">该市场版本暂无内容</div>
+              )}
+              <footer className="pub-foot" style={{ background: tokens.primary_deep || '#0b0f16', color: tokens.on_dark || '#e6ebf2' }}>
+                <span>© {new Date().getFullYear()} {data.site?.name || t.name} · 由 CrossPilot Skill 流水线生成(布局/文案/图片均为 AI 真实产出)</span>
+                <span className="pub-src-badge">Skill-generated</span>
+              </footer>
+            </div>
+          )}
+        </div>
+      ) : (
+        <div className="tpl-demo-stage" data-accent={t.id}>
+          {t.sections.map((sec, idx) => (
+            <DemoSection key={sec.id || idx} sec={sec} t={t} idx={idx} />
+          ))}
+          <footer className="tpl-demo-footer">
+            <span>© {new Date().getFullYear()} {t.name} Demo · 内容为演示数据（Demo / Test）</span>
+            <span>Powered by CrossPilot</span>
+          </footer>
+        </div>
+      )}
     </div>
   )
 }
