@@ -22,9 +22,10 @@ export default function Globe3D({ markets = 6 }) {
       import('three/examples/jsm/postprocessing/EffectComposer.js'),
       import('three/examples/jsm/postprocessing/RenderPass.js'),
       import('three/examples/jsm/postprocessing/UnrealBloomPass.js'),
-    ]).then(([THREE, { EffectComposer }, { RenderPass }, { UnrealBloomPass }]) => {
+      import('three/examples/jsm/postprocessing/ShaderPass.js'),
+    ]).then(([THREE, { EffectComposer }, { RenderPass }, { UnrealBloomPass }, { ShaderPass }]) => {
       if (disposed || !hostRef.current) return
-      try { cleanup = buildGlobe(THREE, hostRef.current, { reduced, mobile, arcs: mobile ? 3 : markets, EffectComposer, RenderPass, UnrealBloomPass }) }
+      try { cleanup = buildGlobe(THREE, hostRef.current, { reduced, mobile, arcs: mobile ? 3 : markets, EffectComposer, RenderPass, UnrealBloomPass, ShaderPass }) }
       catch (e) { console.warn('[Globe3D] init failed:', e); setFailed(true) }
     }).catch(() => setFailed(true))
 
@@ -64,19 +65,21 @@ const FRESNEL_FRAG = `
     gl_FragColor = vec4(uColor, f * uIntensity);
   }`
 
-function buildGlobe(THREE, host, { reduced, mobile, arcs, EffectComposer, RenderPass, UnrealBloomPass }) {
+function buildGlobe(THREE, host, { reduced, mobile, arcs, EffectComposer, RenderPass, UnrealBloomPass, ShaderPass }) {
   const W = () => host.clientWidth, H = () => host.clientHeight
   const renderer = new THREE.WebGLRenderer({ antialias: !mobile, alpha: true, powerPreference: 'high-performance' })
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, mobile ? 1.0 : 1.5))
   renderer.setSize(W(), H())
   renderer.toneMapping = THREE.ACESFilmicToneMapping
-  renderer.toneMappingExposure = 1.05
+  renderer.toneMappingExposure = 2.4
   renderer.outputColorSpace = THREE.SRGBColorSpace
   host.appendChild(renderer.domElement)
 
   const scene = new THREE.Scene()
   const camera = new THREE.PerspectiveCamera(32, W()/H(), 0.1, 100)
-  camera.position.set(0.2, 0.5, 4.5)
+  // 完整球体构图(参考图1):相机拉远,地球整体悬浮于画面中,四周透出背景
+  // (旧 z=4.5 时地球表面特写占满 canvas,在雪山背景上呈现为一块黑色矩形)
+  camera.position.set(0.4, 0.35, 9)
   camera.lookAt(0, 0, 0)
 
   const root = new THREE.Group()
@@ -111,6 +114,8 @@ function buildGlobe(THREE, host, { reduced, mobile, arcs, EffectComposer, Render
       emissiveIntensity: 0.45,
     }),
   )
+  // 初始转到「亚洲日面」朝向相机(参考图1:亮蓝日面 + 城市灯共存,而非整球夜面)
+  earth.rotation.y = -0.9
   root.add(earth)
 
   /* ---- 2. Cloud Layer(独立透明球,异速旋转) ---- */
@@ -234,20 +239,17 @@ function buildGlobe(THREE, host, { reduced, mobile, arcs, EffectComposer, Render
   }
 
   /* ---- 9. Lighting ---- */
-  scene.add(new THREE.AmbientLight(0x87b6d8, 0.35))
-  const key = new THREE.DirectionalLight(0xc0e0ff, 1.3); key.position.set(3, 2.5, 3); scene.add(key)
-  const rim = new THREE.DirectionalLight(0x856AFF, 0.20); rim.position.set(-3, -0.5, -2); scene.add(rim)
-  const fill = new THREE.DirectionalLight(0x37D9FF, 0.15); fill.position.set(-1, 2, 1); scene.add(fill)
+  scene.add(new THREE.AmbientLight(0x9cc4e8, 1.6))
+  const key = new THREE.DirectionalLight(0xffffff, 4.6); key.position.set(2, 3, 9); scene.add(key)
+  const rim = new THREE.DirectionalLight(0x856AFF, 0.4); rim.position.set(-3, -0.5, -2); scene.add(rim)
+  const fill = new THREE.DirectionalLight(0x37D9FF, 0.6); fill.position.set(-1, 2, 1); scene.add(fill)
 
-  /* ---- 10. Bloom ---- */
-  let composer = null
-  if (!mobile) {
-    try {
-      composer = new EffectComposer(renderer)
-      composer.addPass(new RenderPass(scene, camera))
-      composer.addPass(new UnrealBloomPass(new THREE.Vector2(W(),H()), 0.75, 0.7, 0.65))
-    } catch { composer = null }
-  }
+  /* ---- 10. Bloom(已禁用) ----
+   * EffectComposer/UnrealBloomPass 在 alpha canvas 上输出不透明黑底
+   * (renderTarget alpha 被 bloom pass 写成 1),把 hero 背景图整块遮死。
+   * 辉光改由场景内元素自供:Fresnel 大气壳 + 城市灯 emissive + 辉光 sprite,
+   * 直接 renderer.render 保证 canvas 透明融入背景。 */
+  const composer = null
 
   /* ---- 11. Interaction ---- */
   const AUTO = 0.0014

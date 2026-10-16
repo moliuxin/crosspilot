@@ -42,35 +42,60 @@ export default function GlobeIntro() {
         </nav>
       </header>
 
-      {/* ================= HERO(浅冰蓝 + 大型 3D 数字地球) ================= */}
+      {/* ================= HERO(雪山冰湖背景 + 大型 3D 数字地球) ================= */}
       <section className="nh-hero" ref={heroRef}>
+        <div className="nh-hero-bg" aria-hidden="true" />
         <div className="nh-hero-copy">
-          <div className="nh-eyebrow">AI驱动 · B2B GLOBAL GROWTH</div>
+          <div className="nh-eyebrow">AI 驱动 · 让中国企业走向全球</div>
           <h1>让中国企业<br /><span className="grad">更快被全球客户看见</span></h1>
-          <p className="nh-sub">AI 驱动的 B2B 海外获客增长平台</p>
+          <p className="nh-sub">一站式 AI 外贸独立站解决方案</p>
           <p className="nh-desc">
-            从 AI 建站、市场本地化、SEO/GEO、Buyer Conversion 到 RFQ 询盘,
-            让海外增长从「人工运营」升级为「AI 持续执行」。
+            从建站、GEO/SEO 优化到询盘转化,助力中国企业全球增长。
+            AI 建站 · 市场本地化 · Buyer Conversion · RFQ 询盘,让海外增长从
+            「人工运营」升级为「AI 持续执行」。
           </p>
           <div className="nh-cta-row">
             <button className="nh-btn xl" onClick={() => go('/sites/new')}>免费生成独立站 →</button>
             <button className="nh-btn ghost xl" onClick={() => document.getElementById('nh-sec-1')?.scrollIntoView({ behavior: 'smooth' })}>▶ 查看产品演示</button>
           </div>
           <div className="nh-chips">
-            <span className="nh-chip"><i>✦</i> AI建站 <small>智能生成独立站</small></span>
-            <span className="nh-chip"><i>⚝</i> SEO / GEO <small>双重增长引擎</small></span>
+            <span className="nh-chip"><i>✦</i> AI建站 <small>智能生成外贸网站</small></span>
+            <span className="nh-chip"><i>⚝</i> SEO / GEO <small>获取全球流量</small></span>
             <span className="nh-chip"><i>◈</i> Buyer Conversion <small>采购转化准备度</small></span>
-            <span className="nh-chip"><i>🤖</i> Multi-Agent <small>AI业务任务执行</small></span>
+            <span className="nh-chip"><i>🤖</i> Multi-Agent <small>AI 智能获客助手</small></span>
             <span className="nh-chip"><i>✉</i> RFQ <small>询盘转化闭环</small></span>
           </div>
         </div>
         <div className="nh-hero-globe">
           <Globe3D />
-          <div className="nh-globe-tag t-cn">🇨🇳 中国市场<small>本土化表达</small></div>
-          <div className="nh-globe-tag t-en">🇺🇸 English Market<small>Buyer-oriented Content</small></div>
-          <div className="nh-globe-tag t-ru">🇷🇺 Русский рынок<small>Local Market Experience</small></div>
+          {/* 图1 式市场玻璃卡(柱状图为装饰;数字为 Demo 示意,非真实指标) */}
+          <div className="nh-globe-tag t-cn">
+            <span className="gt-flag">🇨🇳</span>
+            <span className="gt-body"><b>中国市场<small>品牌曝光量</small></b><i className="gt-num">+260%</i></span>
+            <span className="gt-bars" aria-hidden="true"><i /><i /><i /><i /></span>
+            <em className="gt-demo">Demo</em>
+          </div>
+          <div className="nh-globe-tag t-en">
+            <span className="gt-flag">🇺🇸🇬🇧</span>
+            <span className="gt-body"><b>English Market<small>有效询盘</small></b><i className="gt-num">+320%</i></span>
+            <span className="gt-bars" aria-hidden="true"><i /><i /><i /><i /></span>
+            <em className="gt-demo">Demo</em>
+          </div>
+          <div className="nh-globe-tag t-ru">
+            <span className="gt-flag">🇷🇺</span>
+            <span className="gt-body"><b>俄罗斯市场<small>询盘增长</small></b><i className="gt-num">+180%</i></span>
+            <span className="gt-bars" aria-hidden="true"><i /><i /><i /><i /></span>
+            <em className="gt-demo">Demo</em>
+          </div>
           <div className="nh-globe-hint">🖱 拖动旋转 · 松手自动巡航</div>
         </div>
+        {/* 图1 式右侧真实数据栏(全部来自平台真实能力,非编造) */}
+        <aside className="nh-side-stats" aria-label="平台真实数据">
+          <div className="ss-item"><i>🌐</i><b>3 大市场</b><small>zh · en · ru 本地化生成</small></div>
+          <div className="ss-item"><i>🤖</i><b>10+ Skills</b><small>真实 Skill Engine 落库</small></div>
+          <div className="ss-item"><i>🔧</i><b>15 MCP 工具</b><small>真实读取业务数据</small></div>
+          <div className="ss-item"><i>✅</i><b>357 测试</b><small>全链路自动化保障</small></div>
+        </aside>
         {/* 曲面衔接下一屏 */}
         <div className="nh-hero-curve" aria-hidden="true" />
       </section>
