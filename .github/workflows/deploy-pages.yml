@@ -1,0 +1,54 @@
+name: Deploy Frontend to GitHub Pages
+
+# 前端静态部署：主分支推送即构建并发布到 GitHub Pages。
+# 应用使用 HashRouter + 相对 base（vite base: './'），无需 404 重写，
+# 模板商城 / 模板 Demo 预览可匿名浏览；商家工作台需要后端（VITE_API_BASE 指向自托管 API）。
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+        env:
+          # 部署到自托管后端时在此填入 API 地址；缺省为本地开发地址（静态演示模式）
+          VITE_API_BASE: ${{ vars.VITE_API_BASE }}
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
