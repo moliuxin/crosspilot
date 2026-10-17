@@ -40,34 +40,31 @@ export default function Globe3D({ markets = 6 }) {
 
 const BASE = `${import.meta.env.BASE_URL}assets/globe/`
 
-/** 大陆点阵:fetch 贴图 → 离屏 canvas 采样陆地掩码 → 球面亮蓝点 positions。
- *  独立异步(不依赖 TextureLoader 回调时序);THREE 由调用方传入;失败仅告警。 */
-async function buildDotPositions(THREE, R = 2.208) {
-  const r = await fetch(BASE + 'earth-day.webp')
+/** 贴图掩码处理:fetch 原图 → 离屏 canvas 按亮度二值化 → CanvasTexture。
+ *  night 模式提取城市灯(仅最亮部为白),land 模式提取陆地掩码;供 emissiveMap 使用。
+ *  阈值取「最大亮度 × keep」的相对值,避免处理过的贴图整体偏亮导致全图点亮。 */
+async function makeMaskTexture(file, keep = 0.75) {
+  const r = await fetch(BASE + file)
   const bmp = await createImageBitmap(await r.blob())
   const c = document.createElement('canvas')
-  c.width = 256; c.height = 128
+  c.width = 512; c.height = 256
   const ctx = c.getContext('2d', { willReadFrequently: true })
-  ctx.drawImage(bmp, 0, 0, 256, 128)
-  const px = ctx.getImageData(0, 0, 256, 128).data
-  const pts = []
-  for (let lat = -84; lat <= 84; lat += 1.15) {
-    const ringR = Math.cos(lat * Math.PI / 180)
-    const step = 1.15 / Math.max(ringR, 0.28)
-    for (let lon = -180; lon < 180; lon += step) {
-      const u = Math.floor((lon + 180) / 360 * 256)
-      const v = Math.floor((90 - lat) / 180 * 128)
-      const idx = (v * 256 + u) * 4
-      const bright = (px[idx] + px[idx + 1] + px[idx + 2]) / 3
-      if (bright > 70) { // 陆地掩码(阈值放宽:海岸线/浅海也点亮,更接近参考图密度)
-        const p = ll(lat, lon, R)
-        pts.push(p.x, p.y, p.z)
-      }
-    }
+  ctx.drawImage(bmp, 0, 0, 512, 256)
+  const img = ctx.getImageData(0, 0, 512, 256)
+  const px = img.data
+  let max = 0
+  for (let i = 0; i < px.length; i += 4) {
+    const b = (px[i] + px[i + 1] + px[i + 2]) / 3
+    if (b > max) max = b
   }
-  const g = new THREE.BufferGeometry()
-  g.setAttribute('position', new THREE.Float32BufferAttribute(pts, 3))
-  return g
+  const thr = max * keep
+  for (let i = 0; i < px.length; i += 4) {
+    const b = (px[i] + px[i + 1] + px[i + 2]) / 3
+    const on = b >= thr ? 255 : 0
+    px[i] = on; px[i + 1] = on; px[i + 2] = on; px[i + 3] = on
+  }
+  ctx.putImageData(img, 0, 0)
+  return c
 }
 
 const HUB = ll(30, 105)
@@ -120,7 +117,7 @@ function buildGlobe(THREE, host, { reduced, mobile, arcs, EffectComposer, Render
 
   const loader = new THREE.TextureLoader()
 
-  /* ---- 1. Earth Mesh(真实贴图) ---- */
+  /* ---- 1. Earth Mesh(图1 风格:真实地表贴图蓝色调 + 城市灯 emissive) ---- */
   const loadTex = (url, srgb=true) => {
     const t = loader.load(url)
     if (srgb) t.colorSpace = THREE.SRGBColorSpace
@@ -128,40 +125,56 @@ function buildGlobe(THREE, host, { reduced, mobile, arcs, EffectComposer, Render
     return t
   }
   const dayTex = loadTex(BASE + 'earth-day.webp')
-  const nightTex = loadTex(BASE + 'earth-night.webp')
   const normalTex = loadTex(BASE + 'earth-normal.webp', false)
   const specTex = loadTex(BASE + 'earth-specular.webp', false)
 
   const earth = new THREE.Mesh(
     new THREE.SphereGeometry(2.2, mobile ? 64 : 128, mobile ? 48 : 96),
     new THREE.MeshStandardMaterial({
-      // 图1 风格:纯深蓝球体打底,大陆用点阵发光层呈现(见下方 dot matrix)
-      color: new THREE.Color(0x0a1c38),
-      roughness: 0.7,
-      metalness: 0.1,
-      emissive: new THREE.Color(0x0a2c5c),
-      emissiveIntensity: 0.55,
+      // 真实地表 + 蓝色调(color 乘法压住银白,保留大陆轮廓)
+      map: dayTex,
+      color: new THREE.Color(0x6f9cd8),
+      normalMap: normalTex,
+      normalScale: new THREE.Vector2(0.6, 0.6),
+      roughnessMap: specTex,
+      roughness: 0.5,
+      metalness: 0.12,
+      emissive: new THREE.Color(0x1e5fd0),
+      emissiveIntensity: 0.5,
     }),
   )
   root.add(earth)
 
-  /* ---- 1b. 大陆点阵(异步:fetch 贴图采样陆地 → 亮蓝点,图1 核心质感) ---- */
-  buildDotPositions(THREE).then((geo) => {
-    // 注意:此处不能引用组件作用域的 disposed(buildGlobe 作用域不可见),
-    // 组件卸载时 cleanup 会移除 host,晚到的 dots 加到游离 root 无副作用
-    const dots = new THREE.Points(geo, new THREE.PointsMaterial({
-      color: 0x6cc4ff, size: 3, sizeAttenuation: false, // 固定像素大小,远相机下仍清晰
-      transparent: true, opacity: 0.95,
-      blending: THREE.AdditiveBlending, depthWrite: false,
-    }))
-    // 初始相位:把亚欧大陆(lon≈105E,hub 所在)转到面向相机
-    dots.rotation.y = 1.3
-    root.add(dots)
-    host.dataset.dotOk = String(geo.getAttribute('position').count)
-  }).catch((e) => { host.dataset.dotErr = String((e && e.message) || e).slice(0, 200) })
+  /* ---- 1b. 城市灯层(异步:night 贴图阈值提取灯点 → 金白 emissive) + 大陆蓝光层(day 阈值提取陆地 → 蓝 emissive) ---- */
+  makeMaskTexture('earth-night.webp', 0.78).then((c) => {
+    const t = new THREE.CanvasTexture(c)
+    t.colorSpace = THREE.SRGBColorSpace
+    const city = new THREE.Mesh(
+      new THREE.SphereGeometry(2.204, mobile ? 48 : 96, mobile ? 36 : 72),
+      new THREE.MeshStandardMaterial({
+        color: 0x000000, roughness: 1, metalness: 0,      // 光照全黑,只留 emissive
+        emissiveMap: t, emissive: new THREE.Color(0xffe0b0), emissiveIntensity: 1.5,
+        blending: THREE.AdditiveBlending, transparent: true, depthWrite: false,
+      }),
+    )
+    root.add(city)
+    host.dataset.cityOk = '1'
+  }).catch((e) => { host.dataset.cityErr = String((e && e.message) || e).slice(0, 160) })
 
-  // 城市灯层已移除:ice-blue 处理过的 night 贴图整体偏亮,additive 会把整球加白。
-  // 大陆质感由点阵层承担,光点由节点脉冲承担。
+  makeMaskTexture('earth-day.webp', 0.55).then((c) => {
+    const t = new THREE.CanvasTexture(c)
+    t.colorSpace = THREE.SRGBColorSpace
+    const landGlow = new THREE.Mesh(
+      new THREE.SphereGeometry(2.202, mobile ? 48 : 96, mobile ? 36 : 72),
+      new THREE.MeshStandardMaterial({
+        color: 0x000000, roughness: 1, metalness: 0,
+        emissiveMap: t, emissive: new THREE.Color(0x2e7fff), emissiveIntensity: 1.15,
+        blending: THREE.AdditiveBlending, transparent: true, depthWrite: false,
+      }),
+    )
+    root.add(landGlow)
+    host.dataset.landOk = '1'
+  }).catch((e) => { host.dataset.landErr = String((e && e.message) || e).slice(0, 160) })
 
   /* ---- 2. Cloud Layer(独立透明球,异速旋转;低不透明度避免盖过点阵) ---- */
   const cloudMat = new THREE.MeshStandardMaterial({

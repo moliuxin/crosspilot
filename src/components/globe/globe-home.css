@@ -103,7 +103,7 @@
 }
 
 .nh-hero h1 {
-  font-size: clamp(36px, 4.8vw, 56px); line-height: 1.12; margin: 0 0 16px;
+  font-size: clamp(32px, 4.2vw, 50px); line-height: 1.14; margin: 0 0 16px;
   letter-spacing: -0.02em; font-weight: 800;
 }
 .nh-hero h1 .grad {
