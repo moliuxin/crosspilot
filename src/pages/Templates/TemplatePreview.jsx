@@ -112,7 +112,7 @@ export default function TemplatePreview() {
                   ))}
                 </nav>
               </div>
-              {sections.length ? renderLayout(sections, { designTokens: tokens, market, locale: v.locale }) : (
+              {sections.length ? renderLayout(sections, { designTokens: tokens, market, locale: v.locale, products: data.products || [] }) : (
                 <div className="empty">该市场版本暂无内容</div>
               )}
               <footer className="pub-foot" style={{ background: tokens.primary_deep || '#0b0f16', color: tokens.on_dark || '#e6ebf2' }}>

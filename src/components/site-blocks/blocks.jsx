@@ -75,7 +75,17 @@ export function BenefitsGrid({ props = {}, ctx }) {
 
 export function ProductGrid({ props = {}, ctx }) {
   const t = ctx?.designTokens || {}
-  const items = (props.items || []).slice(0, 6)
+  // 优先渲染站点挂载的真实产品(名称/型号/首条规格/产品图);无挂载产品时回落 props.items
+  const linked = (ctx?.products || [])
+    .filter((p) => (p.images || []).length > 0) // 只展示有真实图的产品,避免回落共享封面
+    .slice(0, 6)
+    .map((p) => ({
+      name: p.name,
+      model: p.model,
+      spec: (p.specs || []).map((s) => (typeof s === 'string' ? s : `${s.key}: ${s.value}`))[0] || '',
+      image: (p.images || [])[0] || '',
+    }))
+  const items = linked.length ? linked : (props.items || []).slice(0, 6)
   return (
     <section className="sb-block">
       <h2>{props.title || 'Products'}</h2>
@@ -85,6 +95,7 @@ export function ProductGrid({ props = {}, ctx }) {
             <SlotImage src={p.image || props.image} alt={p.name || p.title || 'product'} className="sb-img sb-media-img" />
             <div className="sb-media" style={{ background: (t.primary || '#1f2733') + '22' }} />
             <b>{p.name || p.title}</b>
+            {p.model && <p className="sb-muted">{p.model}</p>}
             {p.spec && <p className="sb-muted">{p.spec}</p>}
           </div>
         ))}

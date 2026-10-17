@@ -70,7 +70,7 @@ export default function PublicMarketSite() {
         </nav>
       </header>
 
-      {v ? renderLayout(sections, { designTokens: tokens, market, locale: v.locale }) : (
+      {v ? renderLayout(sections, { designTokens: tokens, market, locale: v.locale, products: data.products || [] }) : (
         <div className="pub-empty">该市场版本尚未生成</div>
       )}
 

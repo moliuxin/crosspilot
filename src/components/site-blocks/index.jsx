@@ -37,7 +37,9 @@ const REGISTRY = {
 export function renderSection(sec, ctx) {
   const entry = REGISTRY[sec?.type]
   if (!entry) return null
-  return entry.render({ ...sec, ...ctx })
+  // ctx 必须以「ctx」键整包传入:组件签名解构 { props, ctx } ——
+  // 仅展开(...ctx)会让 ctx 在组件内为 undefined(tokens/产品数据全部失效)
+  return entry.render({ ...sec, ...ctx, ctx })
 }
 
 export function renderLayout(sections, ctx) {
