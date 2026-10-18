@@ -99,7 +99,7 @@ function buildGlobe(THREE, host, { reduced, mobile, arcs, EffectComposer, Render
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, mobile ? 1.0 : 1.5))
   renderer.setSize(W(), H())
   renderer.toneMapping = THREE.ACESFilmicToneMapping
-  renderer.toneMappingExposure = 1.15
+  renderer.toneMappingExposure = 1.6
   renderer.outputColorSpace = THREE.SRGBColorSpace
   host.appendChild(renderer.domElement)
 
@@ -112,12 +112,12 @@ function buildGlobe(THREE, host, { reduced, mobile, arcs, EffectComposer, Render
   const root = new THREE.Group()
   root.position.x = 0.4
   // 初始相位:欧亚非大陆(点阵最密区+hub)朝向相机;自转在此基础上继续累加
-  root.rotation.y = 1.0
+  root.rotation.y = 4.2  // 美洲大陆朝向相机(参考图构图)
   scene.add(root)
 
   const loader = new THREE.TextureLoader()
 
-  /* ---- 1. Earth Mesh(图1 风格:真实地表贴图蓝色调 + 城市灯 emissive) ---- */
+  /* ---- 1. Earth Mesh(真实贴图 + 参考图浅蓝调) ---- */
   const loadTex = (url, srgb=true) => {
     const t = loader.load(url)
     if (srgb) t.colorSpace = THREE.SRGBColorSpace
@@ -127,54 +127,35 @@ function buildGlobe(THREE, host, { reduced, mobile, arcs, EffectComposer, Render
   const dayTex = loadTex(BASE + 'earth-day.webp')
   const normalTex = loadTex(BASE + 'earth-normal.webp', false)
   const specTex = loadTex(BASE + 'earth-specular.webp', false)
+  const nightTex = loadTex(BASE + 'earth-night.webp')
 
   const earth = new THREE.Mesh(
     new THREE.SphereGeometry(2.2, mobile ? 64 : 128, mobile ? 48 : 96),
     new THREE.MeshStandardMaterial({
-      // 与首页浅冰蓝背景协调:深藏青海洋(对比) + 青蓝大陆光,色相与背景同族
+      // 参考图浅蓝调:真实地表 + 蓝色氛围乘法 + 城市灯微光
       map: dayTex,
-      color: new THREE.Color(0x4a7fbf),
+      color: new THREE.Color(0x9db8dd),
       normalMap: normalTex,
       normalScale: new THREE.Vector2(0.6, 0.6),
       roughnessMap: specTex,
-      roughness: 0.5,
-      metalness: 0.12,
-      emissive: new THREE.Color(0x1558c8),
-      emissiveIntensity: 0.55,
+      roughness: 0.55,
+      metalness: 0.1,
+      emissiveMap: nightTex,
+      emissive: new THREE.Color(0x9cc4ee),
+      emissiveIntensity: 0.85,
     }),
   )
   root.add(earth)
 
-  /* ---- 1b. 城市灯层(异步:night 贴图阈值提取灯点 → 金白 emissive) + 大陆蓝光层(day 阈值提取陆地 → 蓝 emissive) ---- */
-  makeMaskTexture('earth-night.webp', 0.78).then((c) => {
-    const t = new THREE.CanvasTexture(c)
-    t.colorSpace = THREE.SRGBColorSpace
-    const city = new THREE.Mesh(
-      new THREE.SphereGeometry(2.204, mobile ? 48 : 96, mobile ? 36 : 72),
-      new THREE.MeshStandardMaterial({
-        color: 0x000000, roughness: 1, metalness: 0,      // 光照全黑,只留 emissive
-        emissiveMap: t, emissive: new THREE.Color(0xffe0b0), emissiveIntensity: 1.5,
-        blending: THREE.AdditiveBlending, transparent: true, depthWrite: false,
-      }),
-    )
-    root.add(city)
-    host.dataset.cityOk = '1'
-  }).catch((e) => { host.dataset.cityErr = String((e && e.message) || e).slice(0, 160) })
-
-  makeMaskTexture('earth-day.webp', 0.55).then((c) => {
-    const t = new THREE.CanvasTexture(c)
-    t.colorSpace = THREE.SRGBColorSpace
-    const landGlow = new THREE.Mesh(
-      new THREE.SphereGeometry(2.202, mobile ? 48 : 96, mobile ? 36 : 72),
-      new THREE.MeshStandardMaterial({
-        color: 0x000000, roughness: 1, metalness: 0,
-        emissiveMap: t, emissive: new THREE.Color(0x2e7fff), emissiveIntensity: 1.15,
-        blending: THREE.AdditiveBlending, transparent: true, depthWrite: false,
-      }),
-    )
-    root.add(landGlow)
-    host.dataset.landOk = '1'
-  }).catch((e) => { host.dataset.landErr = String((e && e.message) || e).slice(0, 160) })
+  // 蓝色底光壳:让夜面也有蓝色底色(参考图整体亮蓝感)
+  const blueGlow = new THREE.Mesh(
+    new THREE.SphereGeometry(2.201, mobile ? 48 : 96, mobile ? 36 : 72),
+    new THREE.MeshBasicMaterial({
+      color: 0x1a4a8c, transparent: true, opacity: 0.55,
+      blending: THREE.AdditiveBlending, depthWrite: false,
+    }),
+  )
+  root.add(blueGlow)
 
   /* ---- 2. Cloud Layer(独立透明球,异速旋转;低不透明度避免盖过点阵) ---- */
   const cloudMat = new THREE.MeshStandardMaterial({
@@ -190,11 +171,10 @@ function buildGlobe(THREE, host, { reduced, mobile, arcs, EffectComposer, Render
   )
   root.add(clouds)
 
-  /* ---- 3. Atmosphere(3层 Fresnel,青色外发光与背景同族) ---- */
+  /* ---- 3. Atmosphere(2层 Fresnel,极淡白蓝晕 —— 参考图浅色风格) ---- */
   const atmos = [
-    {r:2.25, color:[0.35,0.80,1.0], intensity:0.6, power:2.2},
-    {r:2.34, color:[0.20,0.60,1.0], intensity:0.30, power:2.6},
-    {r:2.52, color:[0.45,0.40,1.0], intensity:0.13, power:3.0},
+    {r:2.25, color:[0.72,0.85,1.0], intensity:0.35, power:2.4},
+    {r:2.40, color:[0.60,0.78,1.0], intensity:0.14, power:3.0},
   ].map(({r,color,intensity,power}) => {
     const mat = new THREE.ShaderMaterial({
       vertexShader: FRESNEL_VERT, fragmentShader: FRESNEL_FRAG,
@@ -241,7 +221,7 @@ function buildGlobe(THREE, host, { reduced, mobile, arcs, EffectComposer, Render
   /* ---- 6. Trade Arcs + Flow Particles(图1 式发光丝线:hub 放射 + 节点互联) ---- */
   const flows = []
   const arcMat = (op) => new THREE.MeshBasicMaterial({
-    color: 0x49c6ff, transparent: true, opacity: op,
+    color: 0x8fb8e8, transparent: true, opacity: op,
     blending: THREE.AdditiveBlending, depthWrite: false,
   })
   const makeArc = (a, b, liftScale, op, seed) => {
@@ -276,10 +256,10 @@ function buildGlobe(THREE, host, { reduced, mobile, arcs, EffectComposer, Render
     }
   }
 
-  /* ---- 7. Orbital Rings(图1:多层光带环绕) ---- */
+  /* ---- 7. Orbital Rings(浅色丝带环) ---- */
   const orbitRings = []
-  ;[{r:2.75,tilt:0.30,rotZ:0.1,op:0.16,c:0x37D9FF},{r:3.05,tilt:-0.20,rotZ:-0.15,op:0.10,c:0x4F8FFF},
-    {r:2.92,tilt:0.50,rotZ:0.25,op:0.12,c:0x856AFF},{r:3.35,tilt:0.08,rotZ:0.4,op:0.07,c:0x37D9FF}].forEach(({r,tilt,rotZ,op,c},i) => {
+  ;[{r:2.75,tilt:0.30,rotZ:0.1,op:0.28,c:0xa9c8ef},{r:3.05,tilt:-0.20,rotZ:-0.15,op:0.16,c:0xbcd4f5},
+    {r:2.92,tilt:0.50,rotZ:0.25,op:0.20,c:0xc4d9f7},{r:3.35,tilt:0.08,rotZ:0.4,op:0.10,c:0xb0ccf0}].forEach(({r,tilt,rotZ,op,c},i) => {
     const ring = new THREE.Mesh(new THREE.TorusGeometry(r, 0.006, 8, 140),
       new THREE.MeshBasicMaterial({color:c, transparent:true, opacity:op, blending:THREE.AdditiveBlending, depthWrite:false}))
     ring.rotation.x = Math.PI/2 + tilt; ring.rotation.z = rotZ
@@ -310,10 +290,11 @@ function buildGlobe(THREE, host, { reduced, mobile, arcs, EffectComposer, Render
   }
 
   /* ---- 9. Lighting ---- */
-  scene.add(new THREE.AmbientLight(0x9cc4e8, 0.5))
-  const key = new THREE.DirectionalLight(0xffffff, 1.5); key.position.set(2, 3, 9); scene.add(key)
-  const rim = new THREE.DirectionalLight(0x856AFF, 0.3); rim.position.set(-3, -0.5, -2); scene.add(rim)
-  const fill = new THREE.DirectionalLight(0x37D9FF, 0.35); fill.position.set(-1, 2, 1); scene.add(fill)
+  /* ---- 9. Lighting(柔和:浅浮雕只需低对比光影) ---- */
+  scene.add(new THREE.AmbientLight(0xbcd4f0, 1.35))
+  const key = new THREE.DirectionalLight(0xbcd4f8, 1.6); key.position.set(2, 3, 9); scene.add(key)
+  const rim = new THREE.DirectionalLight(0x6aa8e8, 0.7); rim.position.set(-3, -0.5, -2); scene.add(rim)
+  const fill = new THREE.DirectionalLight(0x4a90d9, 0.55); fill.position.set(-1, 2, 1); scene.add(fill)
 
   /* ---- 10. Bloom(已禁用) ----
    * EffectComposer/UnrealBloomPass 在 alpha canvas 上输出不透明黑底
@@ -363,8 +344,8 @@ function buildGlobe(THREE, host, { reduced, mobile, arcs, EffectComposer, Render
     root.rotation.z=mouseX*0.012
     // Cloud 异速旋转
     clouds.rotation.y += 0.0004
-    atmos[0].material.uniforms.uIntensity.value=0.30+0.03*Math.sin(t*0.5)
-    atmos[2].material.uniforms.uIntensity.value=0.07+0.015*Math.sin(t*0.3+2)
+    atmos[0].material.uniforms.uIntensity.value = 0.32 + 0.03 * Math.sin(t * 0.5)
+    atmos[1].material.uniforms.uIntensity.value = 0.12 + 0.015 * Math.sin(t * 0.3 + 2)
     for(const p of flows){
       const k=(t*p.userData.speed+p.userData.offset)%1
       p.position.copy(p.userData.curve.getPoint(k))
