@@ -454,6 +454,7 @@ async def generate_site_full(
 
     # PHASE 6：三市场变体真实持久化（每市场独立 layout/tokens/文案/资产清单）
     from ..services.market_variants import fill_pending_images, generate_variants as _gv
+    from ..services.demo_products import seed_demo_products
 
     try:
         variants = await _gv(db, tid, site)
@@ -466,6 +467,11 @@ async def generate_site_full(
         # 前端轮询 GET /sites/{id}/visuals/status 展示 "Images Generating N/M"
         priority = markets[0] if markets else ""
         background_tasks.add_task(fill_pending_images, db, tid, site.id, priority)
+        # 示例产品填充(free AI 生成也精美):排 在补图之后,一次 flash 调用+免费图档,
+        # 失败静默 —— 详见 services/demo_products.py
+        background_tasks.add_task(
+            seed_demo_products, db, tid, site.id,
+            site.product_category or site.name or "", priority or "en-US")
     except Exception as exc:  # noqa: BLE001 — 变体失败不阻断主站生成
         variants_summary = []
         logger.warning("市场变体生成失败（不阻断主流程）：%s", str(exc)[:150])

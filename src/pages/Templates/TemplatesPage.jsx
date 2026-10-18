@@ -145,22 +145,22 @@ export default function TemplatesPage() {
                   ))}
                 </div>
                 <div className="tpl-actions">
-                  <Link className="ghost-btn" to={`/templates/${t.slug}`}>预览</Link>
                   {t.demoSlug && (
-                    <a className="ai-demo-btn" href={`/#/site/${t.demoSlug}/en-US/`} target="_blank" rel="noreferrer"
-                      title="由 Skill 流水线(行业画像→主题→布局→Transcreation→视觉生成)真实生成的站点">
-                      ✦ AI 生成示例
-                    </a>
+                    <a className="ghost-btn" href={`/#/site/${t.demoSlug}/en-US/`} target="_blank" rel="noreferrer"
+                      title="打开 Skill 流水线真实生成的完整站点">浏览</a>
+                  )}
+                  {!t.demoSlug && (
+                    <Link className="ghost-btn" to={`/templates/${t.slug}`}>演示</Link>
                   )}
                   {!authed ? (
-                    <button className="primary-btn" onClick={() => useTemplate(t)}>使用模板</button>
+                    <button className="primary-btn" onClick={() => useTemplate(t)}>选用购买</button>
                   ) : owned ? (
-                    <button className="primary-btn" onClick={() => useTemplate(t)}>用此模板建站</button>
+                    <button className="primary-btn" onClick={() => useTemplate(t)}>选用此模板</button>
                   ) : pending ? (
                     <span className="tpl-pending">开通中…</span>
                   ) : (
                     <button className="primary-btn" disabled={buying === t.id} onClick={() => buy(t)}>
-                      {buying === t.id ? '处理中…' : t.is_free ? '免费使用' : '立即购买'}
+                      {buying === t.id ? '处理中…' : t.is_free ? '选用(免费)' : '选用购买'}
                     </button>
                   )}
                 </div>
