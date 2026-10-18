@@ -131,16 +131,16 @@ function buildGlobe(THREE, host, { reduced, mobile, arcs, EffectComposer, Render
   const earth = new THREE.Mesh(
     new THREE.SphereGeometry(2.2, mobile ? 64 : 128, mobile ? 48 : 96),
     new THREE.MeshStandardMaterial({
-      // 真实地表 + 蓝色调(color 乘法压住银白,保留大陆轮廓)
+      // 与首页浅冰蓝背景协调:深藏青海洋(对比) + 青蓝大陆光,色相与背景同族
       map: dayTex,
-      color: new THREE.Color(0x6f9cd8),
+      color: new THREE.Color(0x4a7fbf),
       normalMap: normalTex,
       normalScale: new THREE.Vector2(0.6, 0.6),
       roughnessMap: specTex,
       roughness: 0.5,
       metalness: 0.12,
-      emissive: new THREE.Color(0x1e5fd0),
-      emissiveIntensity: 0.5,
+      emissive: new THREE.Color(0x1558c8),
+      emissiveIntensity: 0.55,
     }),
   )
   root.add(earth)
@@ -190,11 +190,11 @@ function buildGlobe(THREE, host, { reduced, mobile, arcs, EffectComposer, Render
   )
   root.add(clouds)
 
-  /* ---- 3. Atmosphere(3层 Fresnel,图1 亮青色外发光) ---- */
+  /* ---- 3. Atmosphere(3层 Fresnel,青色外发光与背景同族) ---- */
   const atmos = [
-    {r:2.25, color:[0.30,0.75,1.0], intensity:0.5, power:2.2},
-    {r:2.34, color:[0.20,0.55,1.0], intensity:0.26, power:2.6},
-    {r:2.52, color:[0.40,0.35,1.0], intensity:0.12, power:3.0},
+    {r:2.25, color:[0.35,0.80,1.0], intensity:0.6, power:2.2},
+    {r:2.34, color:[0.20,0.60,1.0], intensity:0.30, power:2.6},
+    {r:2.52, color:[0.45,0.40,1.0], intensity:0.13, power:3.0},
   ].map(({r,color,intensity,power}) => {
     const mat = new THREE.ShaderMaterial({
       vertexShader: FRESNEL_VERT, fragmentShader: FRESNEL_FRAG,

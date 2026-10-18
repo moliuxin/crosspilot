@@ -248,9 +248,9 @@ export default function MarketVariantsPanel({ siteId }) {
         <button
           className={`ghost-btn${lassoMode ? ' on' : ''}`}
           onClick={() => { setLassoMode((m) => !m); if (lassoMode) { /* 退出即清选区 */ } }}
-          title="自由手绘圈选任意区域(ESC 退出)"
+          title="涂鸦模式:手绘圈选任意区域(ESC 退出,Ctrl+Z 撤销);生成草稿需 brush.edit 权限,未开通会引导购买"
         >
-          {lassoMode ? '⏹ 退出圈选' : '✏️ 自由圈选'}
+          {lassoMode ? '⏹ 退出涂鸦' : '🖌 涂鸦模式'}
         </button>
         <input
           className="brush-input"
