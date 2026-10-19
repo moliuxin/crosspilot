@@ -213,6 +213,8 @@ def seed_if_empty(db: Session) -> bool:
     entitlements.seed_plans(db)
     entitlements.ensure_subscription(db, 1, plan_id="free")
     db.commit()
+    # 演示账号=已购买：预开通 AI 画笔（幂等，存量库同样补齐）
+    _grant_demo_brush(db)
 
     # 多站点：为种子租户建默认站点，种子数据全部挂到它
     _seed_default_site(db)
@@ -313,4 +315,35 @@ def _seed_demo_account(db: Session) -> bool:
         )
     )
     logger.info("已预置演示账户 %s（密码 demo-pass-123）", email)
+    return True
+
+
+def _grant_demo_brush(db: Session) -> bool:
+    """演示租户预开通 AI 画笔（brush.edit 单独授权，不限次）——演示账号=已购买。
+
+    幂等：已有同 feature 授权则跳过。与 _seed_demo_account 解耦，
+    存量库（演示账号早已存在）也能补上这条授权。
+    """
+    from . import entitlements, models
+
+    tid = models.DEFAULT_TENANT_ID
+    exists = (
+        db.query(models.Entitlement)
+        .filter(models.Entitlement.tenant_id == tid, models.Entitlement.feature_key == "brush.edit")
+        .first()
+    )
+    if exists:
+        return False
+    db.add(
+        models.Entitlement(
+            id=f"ent-{tid}-brush-demo",
+            tenant_id=tid,
+            feature_key="brush.edit",
+            source="grant",
+            quota=None,
+            used=0,
+        )
+    )
+    db.commit()
+    logger.info("已为演示租户 %s 预开通 brush.edit（AI 画笔）", tid)
     return True

@@ -1,32 +1,179 @@
-/* Schema-driven Site Blocks(PHASE 5) */
-.sb-hero { padding: 72px 32px; border-radius: 0 0 18px 18px; }
-.sb-hero-inner { max-width: 980px; margin: 0 auto; }
-.sb-eyebrow { font-size: 12px; letter-spacing: 0.22em; font-weight: 700; text-transform: uppercase; margin: 0 0 12px; }
-.sb-lead { font-size: 15.5px; line-height: 1.85; max-width: 620px; opacity: 0.88; }
-.sb-btn { border: none; border-radius: 8px; padding: 13px 26px; font-size: 14.5px; font-weight: 700; cursor: pointer; margin-top: 10px; }
+/* Schema-driven Site Blocks — v2 渲染设计系统。
+   令牌由 blocks.jsx 在每个 section 根节点注入 CSS 变量(--sb-*),
+   全部取自 SiteMarketVariant.design_tokens,回退值保底。 */
 
-.sb-block { max-width: 1080px; margin: 0 auto; padding: 52px 32px; }
-.sb-block h2 { font-size: 24px; margin: 0 0 22px; letter-spacing: -0.01em; }
-.sb-alt { background: rgba(127, 137, 161, 0.06); border-radius: 18px; }
+/* ---------- 版式基线 ---------- */
+.sb-block { padding: 78px 32px; position: relative; }
+.sb-inner { max-width: 1120px; margin: 0 auto; }
 
-.sb-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 16px; }
-.sb-grid-3 { grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
-.sb-card { border: 1px solid #e3e8ef; border-radius: 12px; padding: 18px; background: #fff; }
-.sb-card b { display: block; font-size: 15px; margin-bottom: 6px; }
-.sb-card p { font-size: 13px; line-height: 1.7; }
-.sb-muted { color: #5b6b7f; }
-.sb-media { height: 120px; border-radius: 8px; margin-bottom: 12px; }
-.sb-product .sb-media { height: 150px; }
+.sb-head { margin-bottom: 34px; }
+.sb-head h2 {
+  font-size: clamp(24px, 3vw, 34px);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  margin: 0 0 14px;
+  line-height: 1.22;
+}
+.sb-head-bar {
+  display: block; width: 56px; height: 4px; border-radius: 2px;
+  background: var(--sb-accent, #c2570c);
+}
+/* 全宽交替色带(参考站节奏):偶数 section 淡色底 */
+section.sb-block:nth-of-type(even) { background: rgba(127, 137, 161, 0.07); }
 
-.sb-table { width: 100%; border-collapse: collapse; font-size: 14px; }
-.sb-table th, .sb-table td { text-align: left; padding: 11px 14px; border-bottom: 1px solid #e3e8ef; }
-.sb-table th { width: 38%; color: #5b6b7f; font-weight: 600; }
+/* ---------- Hero:有图全宽沉浸,无图品牌渐变 ---------- */
+.sb-hero { position: relative; overflow: hidden; padding: 96px 32px; }
+.sb-hero-media { min-height: 540px; display: flex; align-items: center; }
+.sb-hero-bg {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  object-fit: cover; display: block;
+}
+.sb-hero-scrim { position: absolute; inset: 0; }
+.sb-hero-inner {
+  position: relative; z-index: 1;
+  max-width: 1120px; margin: 0 auto; width: 100%;
+}
+.sb-eyebrow {
+  display: inline-flex; align-items: center; gap: 8px;
+  font-size: 12px; letter-spacing: 0.22em; font-weight: 700;
+  text-transform: uppercase;
+  padding: 7px 14px; border-radius: 999px;
+  background: rgba(255, 255, 255, 0.14);
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  backdrop-filter: blur(4px);
+  margin: 0 0 20px;
+}
+.sb-hero h1 {
+  font-size: clamp(32px, 5vw, 56px);
+  font-weight: 800; letter-spacing: -0.025em;
+  line-height: 1.12; margin: 0 0 18px;
+  max-width: 760px;
+  text-wrap: balance;
+}
+.sb-lead { font-size: 16.5px; line-height: 1.9; max-width: 620px; opacity: 0.92; margin: 0 0 26px; }
+.sb-cta-row { display: flex; gap: 14px; flex-wrap: wrap; align-items: center; }
 
-.sb-trust { display: flex; gap: 10px; flex-wrap: wrap; }
-.sb-trust span { border: 1.5px solid; border-radius: 8px; padding: 8px 16px; font-size: 13.5px; font-weight: 700; }
+.sb-btn {
+  border: none; border-radius: 10px; padding: 15px 30px;
+  font-size: 15px; font-weight: 700; cursor: pointer;
+  transition: transform 0.18s ease, box-shadow 0.18s ease, filter 0.18s ease;
+}
+.sb-btn:hover { transform: translateY(-2px); filter: brightness(1.06); box-shadow: 0 10px 26px rgba(0, 0, 0, 0.22); }
+.sb-btn-ghost {
+  background: rgba(255, 255, 255, 0.1); color: inherit;
+  border: 1.5px solid rgba(255, 255, 255, 0.45);
+}
+.sb-btn-ghost:hover { background: rgba(255, 255, 255, 0.2); }
 
-.sb-faq details { border-bottom: 1px solid #e3e8ef; padding: 13px 0; }
-.sb-faq summary { cursor: pointer; font-weight: 600; font-size: 14.5px; }
-.sb-faq p { color: #5b6b7f; font-size: 13.5px; line-height: 1.75; margin: 8px 0 0; }
+/* ---------- 通用网格与卡片 ---------- */
+.sb-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 22px; }
+.sb-grid-3 { grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); }
 
-.sb-rfq { border-radius: 18px; text-align: center; padding: 56px 32px; }
+.sb-card {
+  border: 1px solid rgba(127, 137, 161, 0.18);
+  border-radius: var(--sb-radius, 14px);
+  padding: 22px; background: #fff;
+  box-shadow: 0 4px 18px rgba(15, 23, 42, 0.05);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  overflow: hidden;
+}
+.sb-card:hover { transform: translateY(-4px); box-shadow: 0 16px 38px rgba(15, 23, 42, 0.12); }
+.sb-card b { display: block; font-size: 15.5px; margin-bottom: 7px; letter-spacing: -0.01em; }
+.sb-card p { font-size: 13.5px; line-height: 1.75; }
+.sb-muted { color: #5b6b7f; margin: 0; }
+
+/* ---------- 媒体框:图片 4:3 满铺,无图时色块兜底 ---------- */
+.sb-media {
+  position: relative; aspect-ratio: 4 / 3; overflow: hidden;
+  border-radius: calc(var(--sb-radius, 14px) - 6px);
+  margin-bottom: 14px;
+}
+.sb-media-img {
+  width: 100%; height: 100%; object-fit: cover; display: block;
+  transition: transform 0.35s ease;
+}
+.sb-card:hover .sb-media-img { transform: scale(1.05); }
+.sb-chip {
+  position: absolute; left: 10px; bottom: 10px;
+  background: rgba(255, 255, 255, 0.92); backdrop-filter: blur(4px);
+  color: #182230; font-size: 11.5px; font-weight: 700; letter-spacing: 0.04em;
+  padding: 5px 10px; border-radius: 7px;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.18);
+}
+
+/* ---------- 利益点/服务:徽标卡 ---------- */
+.sb-benefit { display: block; }
+.sb-ico {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 40px; height: 40px; border-radius: 11px;
+  background: color-mix(in srgb, var(--sb-accent, #c2570c) 14%, #fff);
+  color: var(--sb-accent, #c2570c);
+  font-size: 17px; font-weight: 800; margin-bottom: 14px;
+}
+
+/* ---------- 参数表 ---------- */
+.sb-table {
+  width: 100%; border-collapse: collapse; font-size: 14px;
+  background: #fff; border-radius: var(--sb-radius, 14px); overflow: hidden;
+  box-shadow: 0 4px 18px rgba(15, 23, 42, 0.05);
+  border: 1px solid rgba(127, 137, 161, 0.18);
+}
+.sb-table th, .sb-table td { text-align: left; padding: 14px 18px; border-bottom: 1px solid rgba(127, 137, 161, 0.14); }
+.sb-table tr:last-child th, .sb-table tr:last-child td { border-bottom: none; }
+.sb-table tr:nth-child(even) { background: rgba(127, 137, 161, 0.05); }
+.sb-table th {
+  width: 38%; color: #5b6b7f; font-weight: 600;
+  border-left: 3px solid var(--sb-accent, #c2570c);
+}
+
+/* ---------- 信任徽章 ---------- */
+.sb-trust { display: flex; gap: 12px; flex-wrap: wrap; }
+.sb-trust span {
+  border-radius: 999px; padding: 10px 20px;
+  font-size: 13.5px; font-weight: 700;
+  background: color-mix(in srgb, var(--sb-accent, #c2570c) 9%, #fff);
+  color: inherit;
+  border: 1px solid color-mix(in srgb, var(--sb-accent, #c2570c) 35%, #fff);
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.05);
+}
+
+/* ---------- FAQ ---------- */
+.sb-faq { display: grid; gap: 10px; }
+.sb-faq details {
+  background: #fff; border: 1px solid rgba(127, 137, 161, 0.18);
+  border-radius: var(--sb-radius, 14px); padding: 16px 20px;
+  box-shadow: 0 2px 10px rgba(15, 23, 42, 0.04);
+}
+.sb-faq summary {
+  cursor: pointer; font-weight: 700; font-size: 14.5px;
+  list-style: none; position: relative; padding-right: 28px;
+}
+.sb-faq summary::-webkit-details-marker { display: none; }
+.sb-faq summary::after {
+  content: '+'; position: absolute; right: 0; top: 50%; transform: translateY(-50%);
+  color: var(--sb-accent, #c2570c); font-size: 20px; font-weight: 700;
+}
+.sb-faq details[open] summary::after { content: '–'; }
+.sb-faq p { color: #5b6b7f; font-size: 13.5px; line-height: 1.8; margin: 10px 0 0; }
+
+/* ---------- RFQ / 快速询价 ---------- */
+.sb-rfq {
+  border-radius: 22px; text-align: center; padding: 72px 32px;
+  position: relative; overflow: hidden;
+  margin: 0 32px 78px;
+}
+.sb-rfq::before {
+  content: ''; position: absolute; inset: 0;
+  background: radial-gradient(600px 300px at 50% 0%, rgba(255, 255, 255, 0.14), transparent 70%);
+  pointer-events: none;
+}
+.sb-rfq .sb-inner { max-width: 680px; }
+.sb-rfq h2 { font-size: clamp(24px, 3.4vw, 36px); margin: 0 0 14px; letter-spacing: -0.02em; }
+
+/* ---------- 窄屏 ---------- */
+@media (max-width: 640px) {
+  .sb-hero { padding: 64px 20px; }
+  .sb-hero-media { min-height: 440px; }
+  .sb-block { padding: 56px 20px; }
+  .sb-rfq { margin: 0 20px 56px; }
+}
