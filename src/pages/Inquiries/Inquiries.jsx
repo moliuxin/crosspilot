@@ -11,7 +11,7 @@ export default function Inquiries() {
   const [statusFilter, setStatusFilter] = useState('all')
   const [tasks, setTasks] = useState([])
   const [taskOpen, setTaskOpen] = useState(false)
-  const [taskForm, setTaskForm] = useState({ title: '', detail: '', due_at: '' })
+  const [taskForm, setTaskForm] = useState({ title: '', detail: '', due_at: '', inquiry_id: '' })
 
   useEffect(() => {
     api.getInquiries().then(setData)
@@ -78,6 +78,12 @@ export default function Inquiries() {
   }
 
   async function createFollowUp() {
+    // 跟进必须挂在具体询盘下:未选询盘一律拦截(此前顶部入口会产出孤儿任务)
+    const inquiryId = taskForm.inquiry_id || active?.id || ''
+    if (!inquiryId) {
+      toast('请先选择要跟进的询盘', 'warn')
+      return
+    }
     if (!taskForm.title.trim()) {
       toast('请填写跟进事项', 'warn')
       return
@@ -87,7 +93,7 @@ export default function Inquiries() {
         kind: 'followup',
         title: taskForm.title.trim(),
         detail: taskForm.detail.trim(),
-        inquiry_id: active?.id || '',
+        inquiry_id: inquiryId,
         due_at: taskForm.due_at,
         steps: [
           { label: '整理客户需求与参数', done: false },
@@ -97,15 +103,13 @@ export default function Inquiries() {
       })
       setTasks((prev) => [task, ...prev])
       setTaskOpen(false)
-      setTaskForm({ title: '', detail: '', due_at: '' })
-      if (active) {
-        // 关联询盘时后端会把状态推进到 contacted
-        setData((d) => ({
-          ...d,
-          inquiries: d.inquiries.map((i) => (i.id === active.id && i.status === 'new' ? { ...i, status: 'contacted' } : i)),
-        }))
-        setActive((a) => (a && a.status === 'new' ? { ...a, status: 'contacted' } : a))
-      }
+      setTaskForm({ title: '', detail: '', due_at: '', inquiry_id: '' })
+      // 关联询盘时后端会把状态推进到 contacted(按所选询盘刷新)
+      setData((d) => ({
+        ...d,
+        inquiries: d.inquiries.map((i) => (i.id === inquiryId && i.status === 'new' ? { ...i, status: 'contacted' } : i)),
+      }))
+      setActive((a) => (a && a.id === inquiryId && a.status === 'new' ? { ...a, status: 'contacted' } : a))
       toast('跟进任务已创建(已落库,刷新不丢)')
     } catch (e) {
       toast(`创建失败:${e?.detail?.message || e?.message || '后端不可用'} — 跟进必须真实落库,不做本地假保存`, 'warn')
@@ -227,7 +231,7 @@ export default function Inquiries() {
                   <button
                     className="row-btn"
                     onClick={() => {
-                      setTaskForm({ title: `跟进 ${active.customer_name} 的 ${active.product_name} 询盘`, detail: '', due_at: '' })
+                      setTaskForm({ title: `跟进 ${active.customer_name} 的 ${active.product_name} 询盘`, detail: '', due_at: '', inquiry_id: active.id })
                       setTaskOpen(true)
                     }}
                   >
@@ -274,6 +278,29 @@ export default function Inquiries() {
         <h2>创建跟进任务</h2>
         <p>跟进任务会记录在对应询盘下，完成后即为该询盘的闭环。</p>
         <div className="form-grid" style={{ marginTop: 14 }}>
+          <div className="form-field full">
+            <label>关联询盘 <em>*</em></label>
+            <select
+              value={taskForm.inquiry_id}
+              onChange={(e) => {
+                const sel = data.inquiries.find((i) => i.id === e.target.value)
+                setTaskForm((f) => ({
+                  ...f,
+                  inquiry_id: e.target.value,
+                  // 未手写标题时,选了询盘自动带出预填标题
+                  title: f.title && f.title.trim() && !f.title.startsWith('跟进 ') ? f.title
+                    : sel ? `跟进 ${sel.customer_name} 的 ${sel.product_name} 询盘` : f.title,
+                }))
+              }}
+            >
+              <option value="">请选择要跟进的询盘…</option>
+              {data.inquiries.map((i) => (
+                <option key={i.id} value={i.id}>
+                  {i.customer_name} · {i.company} · {i.product_name}
+                </option>
+              ))}
+            </select>
+          </div>
           <div className="form-field full">
             <label>跟进事项 <em>*</em></label>
             <input
