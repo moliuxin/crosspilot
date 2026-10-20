@@ -142,7 +142,21 @@
   position: absolute; inset: -40px;
   display: flex; align-items: center; justify-content: center;
 }
-.g3d-host canvas { width: 100% !important; height: 100% !important; }
+/* 参考图暗色太空底衬:固定尺寸圆盘(1000px)居中于地球,渐变在盘内归零,无直线切边 */
+.g3d-host::before {
+  content: '';
+  position: absolute; left: 54%; top: 44%;
+  width: 1000px; height: 1000px;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background: radial-gradient(circle closest-side,
+    rgba(3, 16, 42, 0.98) 0%,
+    rgba(4, 20, 50, 0.90) 66%,
+    rgba(5, 25, 60, 0.45) 85%,
+    rgba(6, 30, 72, 0) 98%);
+  pointer-events: none;
+}
+.g3d-host canvas { width: 100% !important; height: 100% !important; position: relative; }
 
 /* 图1 式市场玻璃卡(深蓝玻璃 + 白字 + 大数字 + 迷你柱状图) */
 .nh-globe-tag {
