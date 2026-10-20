@@ -142,7 +142,8 @@
   position: absolute; inset: -40px;
   display: flex; align-items: center; justify-content: center;
 }
-/* 参考图暗色太空底衬:固定尺寸圆盘(1000px)居中于地球,渐变在盘内归零,无直线切边 */
+/* 地球环境光晕:柔和蓝晕(非黑色阴影),与浅色雪山背景自然衔接;
+   固定尺寸圆盘居中于地球,渐变在盘内归零,无直线切边 */
 .g3d-host::before {
   content: '';
   position: absolute; left: 54%; top: 44%;
@@ -150,10 +151,10 @@
   transform: translate(-50%, -50%);
   border-radius: 50%;
   background: radial-gradient(circle closest-side,
-    rgba(3, 16, 42, 0.98) 0%,
-    rgba(4, 20, 50, 0.90) 66%,
-    rgba(5, 25, 60, 0.45) 85%,
-    rgba(6, 30, 72, 0) 98%);
+    rgba(96, 165, 250, 0.22) 0%,
+    rgba(96, 165, 250, 0.13) 45%,
+    rgba(147, 197, 253, 0.07) 72%,
+    rgba(147, 197, 253, 0) 98%);
   pointer-events: none;
 }
 .g3d-host canvas { width: 100% !important; height: 100% !important; position: relative; }

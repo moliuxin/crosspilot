@@ -278,7 +278,7 @@ export default function MarketVariantsPanel({ siteId }) {
           <div className="panel-head">
             <div>
               <h3>BEFORE / AFTER(确认后才写入公开变体)</h3>
-              <p className="muted" style={{ fontSize: 12 }}>来源:{brushResult.ai_source === 'glm' ? `GLM ${brushResult.model}` : '模板(已如实标注)'}</p>
+              <p className="muted" style={{ fontSize: 12 }}>来源:{brushResult.ai_source === 'glm' ? `GLM ${brushResult.model}` : brushResult.ai_source === 'rule' ? '样式规则(零 AI 调用,颜色/字号指令直达)' : '模板(已如实标注)'}</p>
             </div>
             <div>
               <button className="primary-btn" onClick={confirmPublish}>✓ 确认并发布</button>

@@ -7,17 +7,19 @@
 .sb-block { padding: 78px 32px; position: relative; }
 .sb-inner { max-width: 1120px; margin: 0 auto; }
 
-/* 区块头:居中 + 两侧细线 accent(LUMINA is-section-head/is-kicker) */
+/* 区块头:居中 + 两侧细线 accent(LUMINA is-section-head/is-kicker)
+   画笔样式补丁:--sb-title-color/--sb-title-scale 由 props.style 注入 */
 .sb-head { margin-bottom: 40px; text-align: center; }
 .sb-head h2 {
   font-family: var(--sb-font-head, 'Playfair Display', 'Noto Serif SC', Georgia, serif);
-  font-size: clamp(26px, 3.2vw, 38px);
+  font-size: calc(clamp(26px, 3.2vw, 38px) * var(--sb-title-scale, 1));
   font-weight: 500;
   letter-spacing: 0.01em;
   line-height: 1.18;
   margin: 0 auto 16px;
   max-width: 720px;
   text-wrap: balance;
+  color: var(--sb-title-color, inherit);
 }
 .sb-head-rule {
   display: inline-flex; align-items: center; gap: 14px;
@@ -76,13 +78,18 @@ section.sb-block:nth-of-type(even):not(.sb-dark):not(.sb-rfq) { background: rgba
 }
 .sb-hero h1 {
   font-family: var(--sb-font-head, 'Playfair Display', 'Noto Serif SC', Georgia, serif);
-  font-size: clamp(32px, 5vw, 56px);
+  font-size: calc(clamp(32px, 5vw, 56px) * var(--sb-title-scale, 1));
   font-weight: 500; letter-spacing: 0.005em;
   line-height: 1.12; margin: 0 0 18px;
   max-width: 760px;
   text-wrap: balance;
+  color: var(--sb-title-color, inherit);
 }
-.sb-lead { font-size: 16.5px; line-height: 1.9; max-width: 620px; opacity: 0.92; margin: 0 0 26px; }
+.sb-lead {
+  font-size: calc(16.5px * var(--sb-desc-scale, 1));
+  line-height: 1.9; max-width: 620px; opacity: 0.92; margin: 0 0 26px;
+  color: var(--sb-desc-color, inherit);
+}
 .sb-cta-row { display: flex; gap: 14px; flex-wrap: wrap; align-items: center; }
 
 /* LUMINA 按钮:小号大写字距(展示型克制的奢华 CTA) */

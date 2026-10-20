@@ -34,6 +34,17 @@ function vars(t = {}) {
   }
 }
 
+/** 圈选样式补丁(props.style,由 AI 画笔样式规则写入) → CSS 变量 */
+function styleVars(st) {
+  if (!st) return undefined
+  const v = {}
+  if (st.title_color) v['--sb-title-color'] = st.title_color
+  if (st.title_scale) v['--sb-title-scale'] = String(st.title_scale)
+  if (st.desc_color) v['--sb-desc-color'] = st.desc_color
+  if (st.desc_scale) v['--sb-desc-scale'] = String(st.desc_scale)
+  return Object.keys(v).length ? v : undefined
+}
+
 /** 市场本地化的产品卡悬浮 CTA 文案(展示型站点:询价即转化) */
 function quoteCta(market) {
   if (market === 'ru-RU') return 'Запросить КП'
@@ -91,6 +102,7 @@ export function HeroIndustrial({ props = {}, variant = '', ctx }) {
       data-variant={variant || 'industrial'}
       style={{
         ...vars(t),
+        ...styleVars(props.style),
         background: img ? undefined
           : dark
             ? `linear-gradient(135deg, ${t.primary || '#141a24'}, ${t.primary_deep || '#0b0f16'})`
@@ -134,6 +146,7 @@ export function BenefitsGrid({ props = {}, ctx, type }) {
       className={`sb-block${dark ? ' sb-dark' : ''}`}
       style={{
         ...vars(t),
+        ...styleVars(props.style),
         ...(dark ? { background: `linear-gradient(165deg, ${t.primary || '#141a24'}, ${t.primary_deep || '#0b0f16'})`, color: t.on_dark || '#e6ebf2' } : {}),
       }}
     >
@@ -168,7 +181,7 @@ export function ProductGrid({ props = {}, ctx }) {
     }))
   const items = linked.length ? linked : (props.items || []).slice(0, 6)
   return (
-    <section className="sb-block" style={vars(t)}>
+    <section className="sb-block" style={{ ...vars(t), ...styleVars(props.style) }}>
       <div className="sb-inner">
         <BlockHead title={props.title || 'Products'} />
         <div className="sb-grid sb-grid-3">
