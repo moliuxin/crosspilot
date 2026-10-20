@@ -189,7 +189,8 @@ export default function MarketVariantsPanel({ siteId }) {
 
   async function rollback() {
     try {
-      await api.rollbackVersion(versionInfo.id, 'market_variant', versionInfo.entity_id)
+      // api.rollbackVersion 在 api.js 中有重复定义(对象签名生效)，必须传对象而非位置参数
+      await api.rollbackVersion({ entity_type: 'market_variant', entity_id: versionInfo.entity_id, version_id: versionInfo.id })
       setVersionInfo(null)
       load()
       toast('已回滚到发布前状态', 'success')

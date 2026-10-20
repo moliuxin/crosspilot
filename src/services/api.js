@@ -743,14 +743,6 @@ export const api = {
     return data
   },
 
-  async rollbackVersion(versionId, entityType, entityId) {
-    const { ok, data, error } = await http('POST', '/versions/rollback', {
-      version_id: versionId, entity_type: entityType, entity_id: entityId,
-    })
-    if (!ok) throw error
-    return data
-  },
-
   /* ---------------- Agent ---------------- */
 
   /** Agent 指令：自然语言字符串或结构化 patch */
