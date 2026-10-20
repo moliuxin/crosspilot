@@ -1,10 +1,15 @@
 import './site-blocks.css'
 
 /**
- * Schema-driven Site Blocks(PHASE 5/6 + v2 视觉升级)。
+ * Schema-driven Site Blocks(PHASE 5/6 + v3 LUMINA 质感升级)。
  * 每个组件只消费 props(由后端 layout_schema 输出),禁止 dangerouslySetInnerHTML。
  * 真实图片:props.image(Asset Slot 管线注入)→ <img> 懒加载/alt/错误回退/CSS 占位兜底。
  * ctx: { designTokens, market, productName, locale, products }
+ * v3 吸收 instant_site_ai/LUMINA 设计体系(零 LLM,纯组件/CSS 移植):
+ *  - 衬线显示标题(tokens.heading_font → --sb-font-head;en/ru=Playfair,zh=宋体)
+ *  - 居中区块头 + 两侧细线 kicker(LUMINA is-section-head)
+ *  - 产品卡 4:5 竖图 + 悬浮滑出询价条(is-card__cta)
+ *  - factory/services 语义块渲染为暗色节奏块(is-collections/is-services)
  * 设计令牌通过 CSS 变量(--sb-*)注入 section 根节点,样式集中在 site-blocks.css。
  */
 
@@ -23,8 +28,17 @@ function vars(t = {}) {
     '--sb-accent': t.accent,
     '--sb-primary': t.primary,
     '--sb-primary-deep': t.primary_deep,
-    '--sb-radius': t.radius ? `${t.radius}px` : undefined,
+    '--sb-radius': t.radius,
+    '--sb-font-head': t.heading_font,
+    '--sb-font-body': t.body_font,
   }
+}
+
+/** 市场本地化的产品卡悬浮 CTA 文案(展示型站点:询价即转化) */
+function quoteCta(market) {
+  if (market === 'ru-RU') return 'Запросить КП'
+  if (market === 'zh-CN') return '询价'
+  return 'Request a Quote'
 }
 
 function SlotImage({ src, alt = '', className = 'sb-img', style }) {
@@ -41,22 +55,26 @@ function SlotImage({ src, alt = '', className = 'sb-img', style }) {
   )
 }
 
-/** 媒体框:有图满铺 4:3;无图时才渲染品牌色占位块 */
-function MediaBox({ src, alt, tint, chip }) {
+/** 媒体框:有图满铺;无图时才渲染品牌色占位块 */
+function MediaBox({ src, alt, tint, chip, ratio, cta }) {
   return (
-    <div className="sb-media" style={src ? undefined : { background: tint || 'rgba(127,137,161,0.16)' }}>
+    <div
+      className={`sb-media${ratio ? ` sb-media--${ratio}` : ''}`}
+      style={src ? undefined : { background: tint || 'rgba(127,137,161,0.16)' }}
+    >
       <SlotImage src={src} alt={alt} className="sb-media-img" />
       {chip}
+      {cta && <span className="sb-media-cta">{cta}</span>}
     </div>
   )
 }
 
-/** 区块标题:大标题 + accent 下划短杠 */
+/** 区块标题:居中 + 两侧细线 accent(LUMINA is-kicker 手法) */
 function BlockHead({ title }) {
   return (
     <div className="sb-head">
       <h2>{title}</h2>
-      <i className="sb-head-bar" aria-hidden="true" />
+      <span className="sb-head-rule" aria-hidden="true"><i /></span>
     </div>
   )
 }
@@ -102,16 +120,28 @@ export function HeroIndustrial({ props = {}, variant = '', ctx }) {
   )
 }
 
-export function BenefitsGrid({ props = {}, ctx }) {
+/**
+ * 利益点/服务/制造能力网格。
+ * type=factory|services(来自 section.type)渲染为暗色节奏块(LUMINA is-collections/is-services),
+ * 其余为亮色卡阵。
+ */
+export function BenefitsGrid({ props = {}, ctx, type }) {
   const t = ctx?.designTokens || {}
   const items = (props.items || []).slice(0, 6)
+  const dark = type === 'factory' || type === 'services'
   return (
-    <section className="sb-block" style={vars(t)}>
+    <section
+      className={`sb-block${dark ? ' sb-dark' : ''}`}
+      style={{
+        ...vars(t),
+        ...(dark ? { background: `linear-gradient(165deg, ${t.primary || '#141a24'}, ${t.primary_deep || '#0b0f16'})`, color: t.on_dark || '#e6ebf2' } : {}),
+      }}
+    >
       <div className="sb-inner">
         <BlockHead title={props.title || 'Why us'} />
         <div className="sb-grid">
           {(items.length ? items : ['Reliability', 'Delivery', 'Support']).map((b, i) => (
-            <div className="sb-card sb-benefit" key={i}>
+            <div className={`sb-card sb-benefit${dark ? ' sb-card-dark' : ''}`} key={i}>
               <span className="sb-ico" aria-hidden="true">✓</span>
               <b>{typeof b === 'string' ? b : b.title}</b>
               {typeof b === 'object' && b.desc && <p className="sb-muted">{b.desc}</p>}
@@ -125,6 +155,7 @@ export function BenefitsGrid({ props = {}, ctx }) {
 
 export function ProductGrid({ props = {}, ctx }) {
   const t = ctx?.designTokens || {}
+  const cta = quoteCta(ctx?.market)
   // 优先渲染站点挂载的真实产品(名称/型号/首条规格/产品图);无挂载产品时回落 props.items
   const linked = (ctx?.products || [])
     .filter((p) => (p.images || []).length > 0) // 只展示有真实图的产品,避免回落共享封面
@@ -147,7 +178,9 @@ export function ProductGrid({ props = {}, ctx }) {
                 src={p.image || (i === 0 ? props.image : '')}
                 alt={p.name || p.title || 'product'}
                 tint={hexA(t.primary || '#1f2733', 0.13)}
+                ratio="portrait"
                 chip={p.model ? <span className="sb-chip">{p.model}</span> : null}
+                cta={<span className="sb-media-cta-inner">{cta}</span>}
               />
               <b>{p.name || p.title}</b>
               {p.spec && <p className="sb-muted">{p.spec}</p>}

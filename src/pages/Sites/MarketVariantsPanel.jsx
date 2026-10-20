@@ -114,8 +114,9 @@ export default function MarketVariantsPanel({ siteId }) {
 
   useEffect(() => {
     if (!siteId) return
+    // getSiteDetail 直接返回 site 对象(非 {site});public_slug 为空时回落站点 slug
     api.getSiteDetail(siteId)
-      .then((d) => setSiteSlug(d.site?.public_slug || ''))
+      .then((d) => setSiteSlug(d?.public_slug || d?.slug || ''))
       .catch(() => setSiteSlug(''))
   }, [siteId])
 
@@ -153,7 +154,12 @@ export default function MarketVariantsPanel({ siteId }) {
   }
 
   async function runBrush() {
-    if (!selected || !instruction.trim()) return
+    // 防呆:没选区块时给明确引导,而不是静默不响应
+    if (!selected) {
+      toast('请先点击下方任意区块选中(或开启涂鸦模式圈选),再生成草稿', 'warn')
+      return
+    }
+    if (!instruction.trim()) return
     setBrushBusy(true)
     setBrushResult(null)
     try {
@@ -255,12 +261,11 @@ export default function MarketVariantsPanel({ siteId }) {
         </button>
         <input
           className="brush-input"
-          placeholder="例:更适合俄罗斯系统集成商,突出 10kg 负载、稳定供货和技术支持"
+          placeholder="先点选区块,再输入指令,例:更适合俄罗斯系统集成商,突出 10kg 负载与稳定供货"
           value={instruction}
           onChange={(e) => setInstruction(e.target.value)}
-          disabled={!selected}
         />
-        <button className="primary-btn" onClick={runBrush} disabled={!selected || !instruction.trim() || brushBusy}>
+        <button className="primary-btn" onClick={runBrush} disabled={!instruction.trim() || brushBusy}>
           {brushBusy ? '生成中…' : '生成草稿'}
         </button>
         {versionInfo && (
@@ -310,6 +315,16 @@ export default function MarketVariantsPanel({ siteId }) {
                   <b>{meta.label}</b>
                   <span>{meta.note} · {sections.length} 个区块</span>
                 </div>
+                {siteSlug && (
+                  <a
+                    className="mv-fullscreen"
+                    href={`#/site/${siteSlug}/${v.market}/`}
+                    target="_blank"
+                    rel="noreferrer"
+                    title="全屏预览该语言市场版本(真实公开站)"
+                    onClick={(e) => e.stopPropagation()}
+                  >⛶ 全屏预览</a>
+                )}
               </header>
               <div className="mv-body">
                 {hero.cta && (

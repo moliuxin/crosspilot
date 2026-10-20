@@ -1,25 +1,56 @@
-/* Schema-driven Site Blocks — v2 渲染设计系统。
+/* Schema-driven Site Blocks — v3 LUMINA 质感渲染系统。
    令牌由 blocks.jsx 在每个 section 根节点注入 CSS 变量(--sb-*),
-   全部取自 SiteMarketVariant.design_tokens,回退值保底。 */
+   全部取自 SiteMarketVariant.design_tokens,回退值保底。
+   标题衬线栈来自 tokens.heading_font(en/ru=Playfair,zh=宋体)。 */
 
 /* ---------- 版式基线 ---------- */
 .sb-block { padding: 78px 32px; position: relative; }
 .sb-inner { max-width: 1120px; margin: 0 auto; }
 
-.sb-head { margin-bottom: 34px; }
+/* 区块头:居中 + 两侧细线 accent(LUMINA is-section-head/is-kicker) */
+.sb-head { margin-bottom: 40px; text-align: center; }
 .sb-head h2 {
-  font-size: clamp(24px, 3vw, 34px);
-  font-weight: 800;
-  letter-spacing: -0.02em;
-  margin: 0 0 14px;
-  line-height: 1.22;
+  font-family: var(--sb-font-head, 'Playfair Display', 'Noto Serif SC', Georgia, serif);
+  font-size: clamp(26px, 3.2vw, 38px);
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  line-height: 1.18;
+  margin: 0 auto 16px;
+  max-width: 720px;
+  text-wrap: balance;
 }
-.sb-head-bar {
-  display: block; width: 56px; height: 4px; border-radius: 2px;
+.sb-head-rule {
+  display: inline-flex; align-items: center; gap: 14px;
+  color: var(--sb-accent, #c2570c);
+}
+.sb-head-rule::before, .sb-head-rule::after {
+  content: ''; width: 36px; height: 1px;
+  background: color-mix(in srgb, var(--sb-accent, #c2570c) 55%, transparent);
+}
+.sb-head-rule i {
+  width: 7px; height: 7px; transform: rotate(45deg);
   background: var(--sb-accent, #c2570c);
 }
-/* 全宽交替色带(参考站节奏):偶数 section 淡色底 */
-section.sb-block:nth-of-type(even) { background: rgba(127, 137, 161, 0.07); }
+/* 全宽交替色带:偶数 section 淡色底(暗色节奏块自带底色,跳过条纹) */
+section.sb-block:nth-of-type(even):not(.sb-dark):not(.sb-rfq) { background: rgba(127, 137, 161, 0.07); }
+
+/* ---------- 暗色节奏块(factory/services)LUMINA is-collections ---------- */
+.sb-dark .sb-head h2 { color: inherit; }
+.sb-dark .sb-card {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.16);
+  box-shadow: none;
+}
+.sb-dark .sb-card:hover {
+  border-color: color-mix(in srgb, var(--sb-accent, #c2570c) 60%, transparent);
+  box-shadow: none;
+}
+.sb-card-dark b { color: inherit; }
+.sb-card-dark .sb-muted { color: color-mix(in srgb, currentColor 72%, transparent); }
+.sb-dark .sb-ico {
+  background: color-mix(in srgb, var(--sb-accent, #c2570c) 22%, transparent);
+  color: var(--sb-accent, #c2570c);
+}
 
 /* ---------- Hero:有图全宽沉浸,无图品牌渐变 ---------- */
 .sb-hero { position: relative; overflow: hidden; padding: 96px 32px; }
@@ -44,8 +75,9 @@ section.sb-block:nth-of-type(even) { background: rgba(127, 137, 161, 0.07); }
   margin: 0 0 20px;
 }
 .sb-hero h1 {
+  font-family: var(--sb-font-head, 'Playfair Display', 'Noto Serif SC', Georgia, serif);
   font-size: clamp(32px, 5vw, 56px);
-  font-weight: 800; letter-spacing: -0.025em;
+  font-weight: 500; letter-spacing: 0.005em;
   line-height: 1.12; margin: 0 0 18px;
   max-width: 760px;
   text-wrap: balance;
@@ -53,9 +85,13 @@ section.sb-block:nth-of-type(even) { background: rgba(127, 137, 161, 0.07); }
 .sb-lead { font-size: 16.5px; line-height: 1.9; max-width: 620px; opacity: 0.92; margin: 0 0 26px; }
 .sb-cta-row { display: flex; gap: 14px; flex-wrap: wrap; align-items: center; }
 
+/* LUMINA 按钮:小号大写字距(展示型克制的奢华 CTA) */
 .sb-btn {
-  border: none; border-radius: 10px; padding: 15px 30px;
-  font-size: 15px; font-weight: 700; cursor: pointer;
+  border: none; border-radius: var(--sb-radius, 10px); padding: 15px 30px;
+  font-family: var(--sb-font-head, inherit);
+  font-size: 13px; font-weight: 600;
+  letter-spacing: 0.16em; text-transform: uppercase;
+  cursor: pointer;
   transition: transform 0.18s ease, box-shadow 0.18s ease, filter 0.18s ease;
 }
 .sb-btn:hover { transform: translateY(-2px); filter: brightness(1.06); box-shadow: 0 10px 26px rgba(0, 0, 0, 0.22); }
@@ -67,48 +103,84 @@ section.sb-block:nth-of-type(even) { background: rgba(127, 137, 161, 0.07); }
 
 /* ---------- 通用网格与卡片 ---------- */
 .sb-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 22px; }
-.sb-grid-3 { grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); }
+.sb-grid-3 { grid-template-columns: repeat(auto-fill, minmax(270px, 1fr)); }
 
 .sb-card {
   border: 1px solid rgba(127, 137, 161, 0.18);
   border-radius: var(--sb-radius, 14px);
-  padding: 22px; background: #fff;
+  padding: 0; background: #fff;
   box-shadow: 0 4px 18px rgba(15, 23, 42, 0.05);
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
   overflow: hidden;
 }
-.sb-card:hover { transform: translateY(-4px); box-shadow: 0 16px 38px rgba(15, 23, 42, 0.12); }
-.sb-card b { display: block; font-size: 15.5px; margin-bottom: 7px; letter-spacing: -0.01em; }
-.sb-card p { font-size: 13.5px; line-height: 1.75; }
+.sb-card:hover {
+  transform: translateY(-5px);
+  border-color: color-mix(in srgb, var(--sb-accent, #c2570c) 55%, transparent);
+  box-shadow: 0 20px 40px rgba(15, 23, 42, 0.12);
+}
+.sb-card > b, .sb-card > .sb-muted {
+  display: block;
+  margin-left: 20px; margin-right: 20px;
+}
+.sb-card > b {
+  font-family: var(--sb-font-head, 'Playfair Display', 'Noto Serif SC', Georgia, serif);
+  font-size: 16.5px; font-weight: 600;
+  letter-spacing: 0.01em;
+  margin-top: 18px; margin-bottom: 8px;
+  color: #182230;
+}
+.sb-card > .sb-muted { font-size: 13.5px; line-height: 1.75; margin-bottom: 20px; }
 .sb-muted { color: #5b6b7f; margin: 0; }
 
-/* ---------- 媒体框:图片 4:3 满铺,无图时色块兜底 ---------- */
+/* ---------- 媒体框:产品=4:5 竖图(LUMINA),其余 4:3;悬浮滑出询价条 ---------- */
 .sb-media {
   position: relative; aspect-ratio: 4 / 3; overflow: hidden;
-  border-radius: calc(var(--sb-radius, 14px) - 6px);
-  margin-bottom: 14px;
+  border-radius: 0;
+  margin: 0 0 0;
+  background: transparent;
 }
+.sb-media--portrait { aspect-ratio: 4 / 5; }
 .sb-media-img {
   width: 100%; height: 100%; object-fit: cover; display: block;
-  transition: transform 0.35s ease;
+  transition: transform 0.45s ease;
 }
-.sb-card:hover .sb-media-img { transform: scale(1.05); }
+.sb-card:hover .sb-media-img { transform: scale(1.06); }
 .sb-chip {
-  position: absolute; left: 10px; bottom: 10px;
+  position: absolute; left: 12px; top: 12px; bottom: auto;
   background: rgba(255, 255, 255, 0.92); backdrop-filter: blur(4px);
-  color: #182230; font-size: 11.5px; font-weight: 700; letter-spacing: 0.04em;
-  padding: 5px 10px; border-radius: 7px;
+  color: #182230; font-size: 11.5px; font-weight: 700; letter-spacing: 0.06em;
+  padding: 5px 11px; border-radius: 999px;
   box-shadow: 0 2px 8px rgba(15, 23, 42, 0.18);
+  z-index: 2;
 }
+/* 悬浮询价条:默认藏在下缘外,hover 滑入(LUMINA is-card__cta) */
+.sb-media-cta {
+  position: absolute; left: 0; right: 0; bottom: 0; z-index: 2;
+  display: block;
+  background: rgba(15, 23, 42, 0.86);
+  backdrop-filter: blur(4px);
+  color: #fff;
+  font-size: 12px; font-weight: 700;
+  letter-spacing: 0.18em; text-transform: uppercase;
+  text-align: center;
+  padding: 12px;
+  transform: translateY(101%);
+  transition: transform 0.24s ease-out, background 0.2s ease, color 0.2s ease;
+}
+.sb-card:hover .sb-media-cta { transform: translateY(0); }
+.sb-media-cta:hover { background: var(--sb-accent, #c2570c); }
 
-/* ---------- 利益点/服务:徽标卡 ---------- */
-.sb-benefit { display: block; }
+/* ---------- 利益点/服务:徽标卡(保留内边距版式) ---------- */
+.sb-benefit { padding: 24px; }
+.sb-benefit > b { margin-left: 0; margin-right: 0; margin-top: 0; }
+.sb-benefit .sb-muted { margin-left: 0; margin-right: 0; margin-bottom: 0; }
 .sb-ico {
   display: inline-flex; align-items: center; justify-content: center;
-  width: 40px; height: 40px; border-radius: 11px;
-  background: color-mix(in srgb, var(--sb-accent, #c2570c) 14%, #fff);
+  width: 44px; height: 44px; border-radius: 999px;
+  background: color-mix(in srgb, var(--sb-accent, #c2570c) 12%, #fff);
+  border: 1px solid color-mix(in srgb, var(--sb-accent, #c2570c) 40%, transparent);
   color: var(--sb-accent, #c2570c);
-  font-size: 17px; font-weight: 800; margin-bottom: 14px;
+  font-size: 17px; font-weight: 800; margin-bottom: 16px;
 }
 
 /* ---------- 参数表 ---------- */
@@ -127,10 +199,11 @@ section.sb-block:nth-of-type(even) { background: rgba(127, 137, 161, 0.07); }
 }
 
 /* ---------- 信任徽章 ---------- */
-.sb-trust { display: flex; gap: 12px; flex-wrap: wrap; }
+.sb-trust { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; }
 .sb-trust span {
-  border-radius: 999px; padding: 10px 20px;
-  font-size: 13.5px; font-weight: 700;
+  border-radius: 999px; padding: 10px 22px;
+  font-size: 13px; font-weight: 600;
+  letter-spacing: 0.08em; text-transform: uppercase;
   background: color-mix(in srgb, var(--sb-accent, #c2570c) 9%, #fff);
   color: inherit;
   border: 1px solid color-mix(in srgb, var(--sb-accent, #c2570c) 35%, #fff);
@@ -168,7 +241,12 @@ section.sb-block:nth-of-type(even) { background: rgba(127, 137, 161, 0.07); }
   pointer-events: none;
 }
 .sb-rfq .sb-inner { max-width: 680px; }
-.sb-rfq h2 { font-size: clamp(24px, 3.4vw, 36px); margin: 0 0 14px; letter-spacing: -0.02em; }
+.sb-rfq h2 {
+  font-family: var(--sb-font-head, 'Playfair Display', 'Noto Serif SC', Georgia, serif);
+  font-size: clamp(24px, 3.4vw, 36px);
+  font-weight: 500;
+  margin: 0 0 14px; letter-spacing: 0.005em;
+}
 
 /* ---------- 窄屏 ---------- */
 @media (max-width: 640px) {

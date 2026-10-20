@@ -34,22 +34,23 @@ class ThemeStyleSkill(Skill):
 
     # 市场色温/形态微调(确定性,不经过 LLM):
     # en 留白圆润/冷白底 · zh 中性工业 · ru 务实硬朗(直角+深 accent+冷灰底)
-    # 字体栈为真实 CSS 栈(ru 用俄区常用 PT Sans,zh 用苹方/雅黑,en 用西文栈)
+    # 字体栈为真实 CSS 栈:标题用 LUMINA 级衬线显示字体(en/ru=Playfair[含西里尔],
+    # zh=Noto Serif SC 宋体文气),正文保持无衬线保证参数表/长文可读性
     MARKET_THEME: dict[str, dict] = {
         "zh-CN": {
             "bg": "#f7f8fa", "radius": "8px", "shadow_style": "soft",
-            "heading_font": "system-ui, 'PingFang SC', 'Microsoft YaHei', sans-serif",
+            "heading_font": "'Noto Serif SC', 'Playfair Display', Georgia, serif",
             "body_font": "system-ui, 'PingFang SC', 'Microsoft YaHei', sans-serif",
         },
         "en-US": {
             "bg": "#f8fafc", "radius": "10px", "shadow_style": "soft",
-            "heading_font": "system-ui, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif",
+            "heading_font": "'Playfair Display', 'Cinzel', Georgia, serif",
             "body_font": "system-ui, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif",
         },
         "ru-RU": {
             "bg": "#f4f6f8", "radius": "4px", "shadow_style": "flat",
             "accent": "#b34e0a", "accent_deep": "#8f3f05",  # 加深保证白字对比度只升不降
-            "heading_font": "system-ui, 'PT Sans', 'Segoe UI', Arial, sans-serif",
+            "heading_font": "'Playfair Display', 'PT Sans', Georgia, serif",
             "body_font": "system-ui, 'PT Sans', 'Segoe UI', Arial, sans-serif",
         },
     }
