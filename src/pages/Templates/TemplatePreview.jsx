@@ -3,6 +3,8 @@ import { Link, useParams } from 'react-router-dom'
 import { templateBySlug } from './templates-data'
 import { renderLayout } from '../../components/site-blocks'
 import { api } from '../../services/api'
+import ThemePalette from '../../components/site/ThemePalette'
+import '../../components/site/ThemePalette.css'
 import './templates.css'
 import './../PublicMarketSite.css'
 
@@ -10,6 +12,13 @@ const MARKET_META = {
   'zh-CN': { flag: '🇨🇳', label: '中文' },
   'en-US': { flag: '🇺🇸', label: 'English' },
   'ru-RU': { flag: '🇷🇺', label: 'Русский' },
+}
+
+function loadPalette(slug) {
+  try {
+    const raw = localStorage.getItem('sitepilot.palette.' + slug)
+    return raw ? JSON.parse(raw) : null
+  } catch { return null }
 }
 
 /**
@@ -27,9 +36,12 @@ export default function TemplatePreview() {
   const [market, setMarket] = useState('en-US')
   const [data, setData] = useState(null)
   const [err, setErr] = useState('')
+  const [palette, setPalette] = useState(null)
+  const [palOpen, setPalOpen] = useState(false)
 
   useEffect(() => {
     if (!t?.demoSlug) return
+    setPalette(loadPalette(t.demoSlug))
     setData(null); setErr('')
     api.getPublicSite(t.demoSlug, market)
       .then((d) => {
@@ -38,6 +50,14 @@ export default function TemplatePreview() {
       })
       .catch((e) => setErr(e?.message || '加载失败'))
   }, [t?.demoSlug, market])
+
+  function updatePalette(next) {
+    setPalette(next)
+    try {
+      if (next) localStorage.setItem('sitepilot.palette.' + t.demoSlug, JSON.stringify(next))
+      else localStorage.removeItem('sitepilot.palette.' + t.demoSlug)
+    } catch { /* 隐私模式忽略 */ }
+  }
 
   if (!t) {
     return (
@@ -64,7 +84,8 @@ export default function TemplatePreview() {
   const markets = (t.market_tags || []).filter((m) => MARKET_META[m])
   const v = data?.market_variant
   const sections = v?.layout_schema?.sections || []
-  const tokens = v?.design_tokens || {}
+  const baseTokens = v?.design_tokens || {}
+  const tokens = { ...baseTokens, ...(palette || {}) }  // 调色盘覆盖后的有效令牌
 
   return (
     <div className="tpl-public-page">
@@ -110,6 +131,7 @@ export default function TemplatePreview() {
                       {MARKET_META[m].flag} {MARKET_META[m].label}
                     </button>
                   ))}
+                  <button className="pub-palette-btn" title="配色方案" onClick={() => setPalOpen(true)}>🎨</button>
                 </nav>
               </div>
               {sections.length ? renderLayout(sections, { designTokens: tokens, market, locale: v.locale, products: data.products || [] }) : (
@@ -119,6 +141,14 @@ export default function TemplatePreview() {
                 <span>© {new Date().getFullYear()} {data.site?.name || t.name} · 由 CrossPilot Skill 流水线生成(布局/文案/图片均为 AI 真实产出)</span>
                 <span className="pub-src-badge">Skill-generated</span>
               </footer>
+              {palOpen && (
+                <ThemePalette
+                  baseTokens={baseTokens}
+                  value={palette}
+                  onChange={updatePalette}
+                  onClose={() => setPalOpen(false)}
+                />
+              )}
             </div>
           )}
         </div>
