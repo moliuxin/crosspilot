@@ -64,16 +64,21 @@ export default function Localization() {
           <h1>三个语言界面，三个市场版本</h1>
           <p>同一批商品，页面结构、图片风格、描述方式与信任证据按市场自动适配。</p>
         </div>
-        <div className="head-actions">
-          <button className="primary-btn" onClick={generateMarket} disabled={working === market}>
-            {working === market ? '✦ 生成中…' : '✦ 生成新市场版本'}
-          </button>
-        </div>
+        {/* 仅 legacy /localization 路由(无 siteId)保留旧生成入口;站点路由下由 MarketVariantsPanel 页签按需生成 */}
+        {!params?.siteId && (
+          <div className="head-actions">
+            <button className="primary-btn" onClick={generateMarket} disabled={working === market}>
+              {working === market ? '✦ 生成中…' : '✦ 生成新市场版本'}
+            </button>
+          </div>
+        )}
       </div>
 
             <MarketVariantsPanel siteId={params?.siteId} />
 
-<div className="loc-bar">
+      {!params?.siteId && (
+        <>
+      <div className="loc-bar">
         <div className="loc-bar-item">
           <span>已生成版本</span>
           <b>{generated.length} / {marketOrder.length}</b>
@@ -138,6 +143,8 @@ export default function Localization() {
           <div className="ai-note">✦ <span>AI 不是翻译页面，而是调用对应的 Market Template。</span></div>
         </aside>
       </div>
+        </>
+      )}
     </section>
   )
 }

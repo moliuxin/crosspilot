@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { api } from '../../services/api'
 import { useApp } from '../../app/store/AppContext'
 import { renderLayout } from '../../components/site-blocks'
+import { marketOrder, marketTemplates } from '../../data/marketTemplates'
 import FreehandBrushOverlay from './FreehandBrushOverlay'
 import './market-variants.css'
 
@@ -74,12 +75,27 @@ export default function MarketVariantsPanel({ siteId }) {
   // Freehand AI Brush:lasso 模式 + 已确认的圈选数据(spec 5.3)
   const [lassoMode, setLassoMode] = useState(false)
   const [lassoSel, setLassoSel] = useState(null)   // {selection_mode, polygon_points, bounding_box, section_hint, market, strokes}
+  // 大预览区当前语言 + 未生成页签的按需生成
+  const [previewMarket, setPreviewMarket] = useState('')
+  const [genBusyMarket, setGenBusyMarket] = useState('')
   const pollRef = useRef(null)
 
   const load = useCallback(() => {
     if (!siteId) return
-    api.getMarketVariants(siteId).then(setVariants).catch(() => setVariants([]))
+    api.getMarketVariants(siteId).then((vs) => {
+      setVariants(vs)
+      // 大预览语言跟随已生成版本(当前选中优先)
+      setPreviewMarket((prev) => {
+        if (prev && vs.some((x) => x.market === prev)) return prev
+        const sel = vs.find((x) => x.market === selectedRef.current?.market)
+        return sel?.market || vs[0]?.market || ''
+      })
+    }).catch(() => setVariants([]))
   }, [siteId])
+
+  // load 回调里读取最新 selected(避免把 selected 加进依赖造成反复拉取)
+  const selectedRef = useRef(null)
+  useEffect(() => { selectedRef.current = selected }, [selected])
 
   useEffect(() => { load() }, [load])
 
@@ -120,8 +136,32 @@ export default function MarketVariantsPanel({ siteId }) {
       .catch(() => setSiteSlug(''))
   }, [siteId])
 
-  async function regenerate() {
-    setBusy(true)
+  /** 语言页签:已生成→切换大预览;未生成→按需生成该市场(优先级置顶,额度由后端裁定) */
+  async function tabClick(m, generated) {
+    if (generated) {
+      setPreviewMarket(m)
+      setSelected(null)
+      return
+    }
+    if (genBusyMarket) return
+    setGenBusyMarket(m)
+    try {
+      await api.generateMarketVariants(siteId, m)
+      toast(`${MARKET_META[m]?.flag || ''} ${MARKET_META[m]?.label || m} 版本已生成(结构级);图片后台补齐中`, 'success')
+      pollStatus()
+    } catch (e) {
+      const status = e?.status
+      if (status === 402 || status === 403) {
+        openPaywall('多语言市场版本', '生成新的语言市场版本需要升级套餐(或消耗免费额度)。', 'market.localize')
+      } else {
+        toast(`生成失败:${e?.detail?.message || e?.message || '请稍后重试'}`, 'warn')
+      }
+    } finally {
+      setGenBusyMarket('')
+    }
+  }
+
+  async function regenerate() {    setBusy(true)
     try {
       const res = await api.generateMarketVariants(siteId)
       setVariants(res.variants || [])
@@ -355,6 +395,70 @@ export default function MarketVariantsPanel({ siteId }) {
           )
         })}
       </div>
+
+      {/* 语言切换 + 真实变体大预览(可画笔点选编辑) */}
+      {variants.length > 0 && (
+        <>
+          <div className="mv-tabs">
+            {marketOrder.map((m) => {
+              const gen = variants.some((x) => x.market === m)
+              const meta2 = MARKET_META[m] || {}
+              return (
+                <button
+                  key={m}
+                  className={`mv-tab${previewMarket === m ? ' active' : ''}`}
+                  disabled={genBusyMarket === m}
+                  onClick={() => tabClick(m, gen)}
+                  title={gen ? `切换到 ${meta2.label} 版本预览(可点选区块用画笔修改)` : '尚未生成:点击将生成该市场版本(消耗生成额度)'}
+                >
+                  {meta2.flag} · {meta2.label}
+                  {!gen && <em className="tab-badge">{genBusyMarket === m ? '生成中…' : '未生成'}</em>}
+                </button>
+              )
+            })}
+          </div>
+          <div className="mv-editor">
+            <div className="mv-preview">
+              {(() => {
+                const pv = variants.find((x) => x.market === previewMarket)
+                if (!pv) return <div className="empty">该市场版本尚未生成 —— 点击上方「未生成」页签生成。</div>
+                const tk = pv.design_tokens || {}
+                return (pv.layout_schema?.sections || []).map((s) => (
+                  <div
+                    key={s.id}
+                    className={`mv-section${selected?.market === pv.market && selected?.sectionId === s.id ? ' sel' : ''}`}
+                    onClick={() => {
+                      if (lassoMode) return
+                      setSelected({ market: pv.market, sectionId: s.id, type: s.type })
+                    }}
+                    title={lassoMode ? '自由圈选模式:在上方拖动绘制选区' : '点击选中,供 AI 画笔修改'}
+                  >
+                    {renderLayout([s], { designTokens: tk, market: pv.market, locale: pv.locale })}
+                  </div>
+                ))
+              })()}
+            </div>
+            <aside className="market-rules panel">
+              <strong>当前市场策略</strong>
+              {(() => {
+                const mt = marketTemplates[previewMarket] || {}
+                return (
+                  <>
+                    <div className="rule-row"><span>信息密度</span><b>{mt.density}</b></div>
+                    <div className="rule-row"><span>首屏重点</span><b>{mt.focus}</b></div>
+                    <div className="rule-row"><span>信任元素</span><b>{mt.trust}</b></div>
+                    <div className="rule-row"><span>主 CTA</span><b>{mt.cta}</b></div>
+                    <div className="rule-row"><span>联系方式优先级</span><b>{mt.contactPriority}</b></div>
+                    <div className="rule-row"><span>描述详略</span><b>{mt.descDetail}</b></div>
+                    <div className="rule-row"><span>图片风格</span><b>{mt.visual}</b></div>
+                  </>
+                )
+              })()}
+              <div className="ai-note">✦ <span>切换语言后直接点选区块,画笔修改的是该语言版本(结构级独立)。</span></div>
+            </aside>
+          </div>
+        </>
+      )}
     </section>
   )
 }

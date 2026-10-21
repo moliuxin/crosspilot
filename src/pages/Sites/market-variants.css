@@ -16,6 +16,53 @@
   flex: 0 0 auto;
 }
 .mv-fullscreen:hover { background: rgba(255,255,255,0.22); border-color: rgba(255,255,255,0.6); }
+
+/* ---------- 语言页签 + 真实变体大预览(可画笔点选) ---------- */
+.mv-tabs { display: flex; gap: 10px; flex-wrap: wrap; margin: 18px 0 0; }
+.mv-tab {
+  position: relative;
+  padding: 10px 18px; border-radius: 10px;
+  border: 1px solid #dbe2ec; background: #fff;
+  font-size: 13.5px; font-weight: 600; color: #182230;
+  cursor: pointer;
+  transition: border-color .2s ease, box-shadow .2s ease, transform .2s ease;
+}
+.mv-tab:hover:not(:disabled) { border-color: #315efb; transform: translateY(-1px); }
+.mv-tab.active { border-color: #315efb; box-shadow: 0 0 0 1px #315efb inset; background: #f4f7ff; }
+.mv-tab:disabled { opacity: 0.6; cursor: wait; }
+.tab-badge {
+  margin-left: 8px; padding: 2px 7px; border-radius: 999px;
+  background: #eef1f6; color: #8a92a3;
+  font-size: 11px; font-style: normal; font-weight: 600;
+}
+.mv-editor {
+  display: grid; grid-template-columns: minmax(0, 1fr) 300px;
+  gap: 16px; margin-top: 14px;
+  align-items: start;
+}
+@media (max-width: 980px) { .mv-editor { grid-template-columns: 1fr; } }
+.mv-preview {
+  background: #fff; border: 1px solid #e3e8ef; border-radius: 14px;
+  overflow: auto; max-height: 720px;
+}
+.mv-preview .mv-section { padding: 4px 0; cursor: pointer; border-bottom: 1px dashed transparent; }
+.mv-preview .mv-section:hover { background: rgba(49, 94, 251, 0.045); }
+.mv-preview .mv-section.sel { outline: 2px dashed #315efb; outline-offset: -2px; background: rgba(49, 94, 251, 0.06); }
+.mv-preview .sb-block { padding: 48px 28px; }
+.mv-preview .sb-hero { padding: 64px 28px; }
+.mv-preview .sb-rfq { margin: 0 20px 48px; }
+/* 复用询盘页的市场策略面板样式(类名一致,缺省兜底) */
+.mv-editor .market-rules { padding: 18px; }
+.mv-editor .market-rules strong { display: block; margin-bottom: 12px; }
+.mv-editor .rule-row {
+  display: flex; justify-content: space-between; gap: 12px;
+  padding: 8px 0; font-size: 13px; border-bottom: 1px dashed #eef1f6;
+}
+.mv-editor .rule-row span { color: #5b6b7f; }
+.mv-editor .ai-note {
+  margin-top: 12px; padding: 10px 12px; border-radius: 8px;
+  background: #f4f7ff; color: #315efb; font-size: 12.5px; line-height: 1.6;
+}
 .mv-flag { font-size: 22px; }
 .mv-body { padding: 6px 0 0; max-height: 520px; overflow: auto; }
 .mv-body .sb-block { padding: 26px 18px; }
