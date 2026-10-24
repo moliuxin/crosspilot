@@ -31,9 +31,17 @@ _STYLE_COLORS = {
     "gold": "#d4a017", "orange": "#ea580c", "pink": "#ec4899",
     "black": "#111827", "white": "#ffffff", "gray": "#6b7280", "grey": "#6b7280",
 }
-_COLOR_RE = "(?:字体|文字|标题|描述|正文|颜色)?(?:变成|变为|改为|改成|换成|设为|设置成|调成|用)?\\s*([A-Za-z]{4,6}|[\\u4e00-\\u9fa5])色"
-_SIZE_UP = "(?:字体|文字|标题|描述|正文)?(?:变大|大一点|大一些|加大|调大|更大|再大)(?:一点|一些|些)?"
-_SIZE_DOWN = "(?:字体|文字|标题|描述|正文)?(?:变小|小一点|小一些|缩小|调小|更小|再小)(?:一点|一些|些)?"
+_COLOR_RE = "(?:字体|文字|标题|描述|正文)?(?:的)?(?:颜色)?(?:变成|变为|改为|改成|换成|设为|设置成|调成|用|是)?\\s*([A-Za-z]{3,8}|[\\u4e00-\\u9fa5]{1,2})色"
+_SIZE_UP = "(?:字体|文字|标题|描述|正文)?(?:的)?(?:大小|尺寸)?(?:变成|变为|改为|改成|换成|设为|设置成|调成|是)?\\s*(?:变大|大一点|大一些|加大|调大|更大|再大)(?:一点|一些|些)?"
+_SIZE_DOWN = "(?:字体|文字|标题|描述|正文)?(?:的)?(?:大小|尺寸)?(?:变成|变为|改为|改成|换成|设为|设置成|调成|是)?\\s*(?:变小|小一点|小一些|缩小|调小|更小|再小)(?:一点|一些|些)?"
+# 纯样式判定:剥离样式词汇后残留为空 → 视为纯样式指令(严禁把样式话术当正文送进模型)
+_STYLE_FILLER_RE = "[把将请帮帮我忙字体文字颜色字号大小尺寸标题描述正文一下点点些的的改改变变成设置设置成调成换成变为用是与和和再都给]"
+
+
+def _purge_style_words(text: str) -> str:
+    import re as _re
+
+    return _re.sub(_STYLE_FILLER_RE, "", text or "").strip()
 
 
 def parse_style_intent(instruction: str) -> tuple[dict, str, list[str]]:
@@ -165,8 +173,9 @@ async def brush_generate(payload: BrushGenerateRequest, db: Session = Depends(ge
     # 否则 GLM 会把"字体变成紫色"当成正文写进标题
     style_updates, residual, style_labels = parse_style_intent(payload.instruction)
     content_instruction = residual.strip()
-    # 残片≤2字(如"一点")视为量化词碎屑,纯样式处理;否则才进入内容改写
-    style_only = bool(style_updates) and len(content_instruction) <= 2
+    # 纯样式判定:残片≤2字(量化词碎屑),或残片剥掉样式词汇后为空
+    # (如"把字体颜色改为紫色"这类完整样式话术),一律不进内容改写
+    style_only = bool(style_updates) and (len(content_instruction) <= 2 or not _purge_style_words(content_instruction))
 
     if style_only:
         new_props = dict(sec.get("props") or {})
