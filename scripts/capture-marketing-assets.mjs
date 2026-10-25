@@ -59,10 +59,11 @@ const slug = site.public_slug
 await page.goto(`${BASE}/#/sites/new`)
 await shot(page, 'mk-generate')
 
-// ---- ② 三市场公开站(结构互异) ----
+// ---- ② 三市场公开站(结构互异) —— 统一从首屏 hero 顶部拍摄,三张构图一致 ----
 for (const m of ['zh-CN', 'en-US', 'ru-RU']) {
   await page.goto(`${BASE}/#/site/${slug}/${m}/`)
-  await page.evaluate(() => window.scrollTo(0, 500))
+  await page.waitForTimeout(2600) // 等 hero 图加载
+  await page.evaluate(() => window.scrollTo(0, 0))
   await shot(page, 'mk-site-' + m.split('-')[0].toLowerCase())
 }
 

@@ -14,12 +14,13 @@ const OUT = path.resolve('public/template-assets')
 fs.mkdirSync(OUT, { recursive: true })
 
 const DEMOS = [
-  { tpl: 'industrial-pro', slug: 's-1-b9528a', market: 'en-US' },
-  { tpl: 'supplier-minimal', slug: 's-1-18b564', market: 'en-US' },
-  { tpl: 'russia-industrial', slug: 's-1-56abdf', market: 'ru-RU' },
-  { tpl: 'food-export', slug: 's-1-cca731', market: 'en-US' },
-  { tpl: 'electronics-global', slug: 's-1-cd90cb', market: 'en-US' },
-  { tpl: 'building-materials-pro', slug: 's-1-0d9eec', market: 'en-US' },
+  // 全部截 zh-CN:卡片缩略图无英文,六张构图统一(三语言变体均已生成)
+  { tpl: 'industrial-pro', slug: 's-1-b9528a', market: 'zh-CN' },
+  { tpl: 'supplier-minimal', slug: 's-1-18b564', market: 'zh-CN' },
+  { tpl: 'russia-industrial', slug: 's-1-56abdf', market: 'zh-CN' },
+  { tpl: 'food-export', slug: 's-1-cca731', market: 'zh-CN' },
+  { tpl: 'electronics-global', slug: 's-1-cd90cb', market: 'zh-CN' },
+  { tpl: 'building-materials-pro', slug: 's-1-0d9eec', market: 'zh-CN' },
 ]
 
 const browser = await chromium.launch({ executablePath: CHROME })
