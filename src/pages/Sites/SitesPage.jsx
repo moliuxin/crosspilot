@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { api } from '../../services/api'
 import { useApp } from '../../app/store/AppContext'
 import { marketTemplates } from '../../data/marketTemplates'
+import { renderLayout } from '../../components/site-blocks'
 import './sites.css'
 
 /**
@@ -11,12 +12,13 @@ import './sites.css'
  * 多站点架构的唯一站点列表入口：
  * - 一个账号可创建和管理多个独立站；
  * - 具体网站的管理（页面编辑 / 市场版本 / 版本历史）从这里进入；
- * - 侧栏不再出现「网站 / 页面编辑 / 页面内容」等重复入口。
+ * - 卡片顶部实时渲染默认语言版本的 hero(同模板商城缩略图,但永远跟随最新内容)。
  */
 export default function SitesPage() {
   const navigate = useNavigate()
   const { toast, openPaywall } = useApp()
   const [sites, setSites] = useState(null)
+  const [previews, setPreviews] = useState({})
   const [busyId, setBusyId] = useState('')
 
   async function refresh() {
@@ -29,6 +31,12 @@ export default function SitesPage() {
 
   useEffect(() => {
     refresh()
+    // 缩略图数据(每站 hero + tokens);失败不阻塞列表
+    api.getSitePreviews().then((rows) => {
+      const map = {}
+      for (const p of rows || []) map[p.site_id] = p
+      setPreviews(map)
+    }).catch(() => {})
   }, [])
 
   async function togglePublish(site) {
@@ -93,10 +101,24 @@ export default function SitesPage() {
         <div className="sites-grid">
           {sites.map((s) => {
             const published = s.status === 'published'
+            const pv = previews[s.id]
+            const pvSections = pv?.sections || []
             return (
               <article className="site-card" key={s.id}>
                 <div className="site-card-top" data-status={s.status}>
-                  <div className="site-card-glyph">{(s.name || 'S').slice(0, 2).toUpperCase()}</div>
+                  {pvSections.length > 0 ? (
+                    <div
+                      className="site-thumb"
+                      style={{ background: pv.tokens?.bg || '#f7f8fa', color: pv.tokens?.text || '#182230' }}
+                      onClick={() => navigate(`/sites/${s.id}`)}
+                      title="点击进入管理"
+                    >
+                      {renderLayout(pvSections, { designTokens: pv.tokens || {}, market: pv.market })}
+                      <span className="site-thumb-market">{marketTemplates[pv.market]?.flag || ''} {marketTemplates[pv.market]?.label || pv.market}</span>
+                    </div>
+                  ) : (
+                    <div className="site-card-glyph">{(s.name || 'S').slice(0, 2).toUpperCase()}</div>
+                  )}
                   <span className={`site-status site-status-${s.status}`}>
                     ● {published ? '已发布' : s.status === 'archived' ? '已归档' : '草稿'}
                   </span>

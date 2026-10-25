@@ -175,6 +175,34 @@ def create_site(payload: schemas.SiteCreate, db: Session = Depends(get_db), tid:
     return {"ok": True, "site": site.to_dict()}
 
 
+@router.get("/previews")
+def list_site_previews(db: Session = Depends(get_db), tid: int = Depends(tenant_scope)):
+    """站点卡片缩略图数据(批量):每站按 target_markets 优先序选一个变体,
+    返回首屏 hero 区块 + 设计令牌 —— 前端实时渲染缩略图,站点改动即刷新,零截图。"""
+    sites = (
+        db.query(models.Site)
+        .filter(models.Site.tenant_id == tid)
+        .order_by(models.Site.created_at.desc())
+        .all()
+    )
+    out = []
+    for s in sites:
+        rows = db.query(models.SiteMarketVariant).filter(models.SiteMarketVariant.site_id == s.id).all()
+        by_mkt = {r.market: r for r in rows}
+        chosen = next((by_mkt[m] for m in (s.target_markets or []) if m in by_mkt), rows[0] if rows else None)
+        if chosen is None:
+            out.append({"site_id": s.id, "market": "", "tokens": {}, "sections": []})
+            continue
+        d = chosen.to_dict()
+        out.append({
+            "site_id": s.id,
+            "market": chosen.market,
+            "tokens": d.get("design_tokens") or {},
+            "sections": (d.get("layout_schema") or {}).get("sections", [])[:1],
+        })
+    return {"previews": out}
+
+
 @router.get("/{site_id}")
 def get_site_endpoint(site_id: str, db: Session = Depends(get_db), tid: int = Depends(tenant_scope)):
     site = require_site(db, tid, site_id)

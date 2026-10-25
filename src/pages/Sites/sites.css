@@ -1,5 +1,32 @@
 /* 多站点：我的网站 / 创建网站 / 站点详情 */
 
+/* ---------- 站点卡片实时缩略图(渲染默认语言 hero,同模板商城质感) ---------- */
+.site-card-top:has(.site-thumb) {
+  height: 148px;
+  padding: 0;
+  display: block;
+  background: none;
+}
+.site-thumb {
+  position: relative;
+  height: 148px;
+  overflow: hidden;
+  cursor: pointer;
+  border-bottom: 1px solid rgba(15, 23, 42, 0.08);
+}
+.site-thumb .sb-hero { padding: 22px 18px !important; min-height: 0 !important; }
+.site-thumb .sb-hero h1 { font-size: 19px !important; margin: 8px 0 6px !important; line-height: 1.25 !important; }
+.site-thumb .sb-eyebrow { font-size: 9px !important; padding: 3px 9px !important; margin-bottom: 8px !important; }
+.site-thumb .sb-lead,
+.site-thumb .sb-cta-row { display: none !important; }
+.site-thumb-market {
+  position: absolute; right: 8px; bottom: 8px;
+  padding: 3px 9px; border-radius: 999px;
+  background: rgba(15, 23, 42, 0.62); color: #fff;
+  font-size: 10.5px; font-weight: 600;
+  backdrop-filter: blur(3px);
+}
+
 .sites-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));

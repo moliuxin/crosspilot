@@ -240,6 +240,13 @@ export const api = {
     return ok ? data.sites || [] : []
   },
 
+  /** 站点卡片缩略图(批量):每站默认语言 hero 区块 + 设计令牌,前端实时渲染 */
+  async getSitePreviews() {
+    // 时间戳防 nginx 300s API 缓存 —— 站点编辑后缩略图必须即时反映
+    const { ok, data } = await http('GET', `/sites/previews?_=${Date.now()}`)
+    return ok ? data.previews || [] : []
+  },
+
   async createSite(payload) {
     const { ok, data, error } = await http('POST', '/sites', payload)
     if (!ok) throw error
