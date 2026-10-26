@@ -111,6 +111,13 @@
   -webkit-background-clip: text; background-clip: text; color: transparent;
 }
 .nh-sub { font-size: 17px; font-weight: 700; color: #1e3a5f; margin: 0 0 10px; }
+.nh-positioning {
+  font-size: 13.5px;
+  letter-spacing: 0.08em;
+  color: rgba(59, 130, 246, 0.9);
+  margin: 6px 0 4px;
+  font-weight: 600;
+}
 .nh-desc { font-size: 14.5px; line-height: 1.9; color: var(--nh-dim); max-width: 460px; margin: 0 0 26px; }
 
 .nh-cta-row { display: flex; gap: 14px; margin: 0 0 30px; flex-wrap: wrap; }

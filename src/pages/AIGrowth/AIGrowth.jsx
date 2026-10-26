@@ -7,10 +7,10 @@ import { useApp } from '../../app/store/AppContext'
 // 按总指令「一级菜单固定」，SEO / GEO / 竞品分析 / Buyer Conversion / Skill Center
 // 等全部收进本页，不再堆一级菜单。
 const DIRECT = [
+  { to: '/growth/competitor', icon: '⬢', label: '商机 BI · 品类机会简报', desc: '热词数据 × 竞品信号 × 行业知识库 → 主推品类与市场优先级', isNew: true },
   { to: '/seo', icon: '↗', label: 'SEO 优化', desc: '标题 / Slug / Meta / H1 / FAQ / ALT / Schema / 内链' },
-  { to: '/growth/geo', icon: '◈', label: 'GEO（AI 搜索）', desc: '让 AI 回答里出现你的品牌与产品', isNew: true },
+  { to: '/growth/geo', icon: '◈', label: 'GEO（AI 搜索）', desc: '让 AI 回答里出现你的品牌与产品' },
   { to: '/growth/audit', icon: '◎', label: '网站诊断', desc: '可发现性 / 体验 / 说服力 / 转化路径' },
-  { to: '/growth/competitor', icon: '⚑', label: '竞品分析', desc: '对标头部，找差异化位置' },
   { to: '/growth/conversion', icon: '◉', label: 'Buyer Conversion', desc: 'AI 买家模拟，找转化阻塞点' },
   { to: '/growth/copy', icon: '✎', label: 'AI 文案', desc: '首屏主张 / 产品描述 / FAQ' },
   { to: '/growth/image', icon: '▣', label: 'AI 图片', desc: '产品主图 / 场景图 / 统一调性' },

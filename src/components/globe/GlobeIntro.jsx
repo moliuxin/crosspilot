@@ -49,6 +49,9 @@ export default function GlobeIntro() {
           <div className="nh-eyebrow">AI 驱动 · 让中国企业走向全球</div>
           <h1>让中国企业<br /><span className="grad">更快被全球客户看见</span></h1>
           <p className="nh-sub">一站式 AI 外贸独立站解决方案</p>
+          <p className="nh-positioning">
+            聚焦跨境电商 B2B 询盘闭环 · 服务「新三样 / 新新三样」硬科技出海
+          </p>
           <p className="nh-desc">
             从建站、GEO/SEO 优化到询盘转化,助力中国企业全球增长。
             AI 建站 · 市场本地化 · Buyer Conversion · RFQ 询盘,让海外增长从
