@@ -59,6 +59,56 @@ def _resolve_public_tenant(db: Session, key: str) -> models.Tenant | None:
     return None
 
 
+@router.get("/sitemap.xml")
+def sitemap_xml(base_url: str = ""):
+    """全站 sitemap：所有已发布站点的市场变体 URL + hreflang 互指。
+
+    引擎抓取入口(Yandex.Webmaster / Search Console 直接提交本地址);
+    base_url 可显式传入对外域名(反代场景),缺省 localhost:8080。
+    """
+    return _sitemap_response(base_url)
+
+
+def _sitemap_response(base_url: str) -> "Response":
+    from fastapi.responses import Response
+    from urllib.parse import quote
+
+    base = (base_url or "http://localhost:8080").rstrip("/")
+    from ..database import SessionLocal
+
+    db = SessionLocal()
+    try:
+        rows = (
+            db.query(models.Site, models.SiteMarketVariant)
+            .join(models.SiteMarketVariant, models.SiteMarketVariant.site_id == models.Site.id)
+            .filter(models.Site.status == "published")  # type: ignore[arg-type]
+            .all()
+        )
+    finally:
+        db.close()
+
+    by_site: dict = {}
+    for site, variant in rows:
+        by_site.setdefault(site.public_slug, []).append(variant.market)
+
+    urls = []
+    for slug, markets in by_site.items():
+        loc = f"{base}/#/site/{quote(slug)}/en-US/"
+        alts = "".join(
+            f'<xhtml:link rel="alternate" hreflang="{m}" href="{base}/#/site/{quote(slug)}/{m}/"/>'
+            for m in sorted(markets)
+        )
+        urls.append(f"<url><loc>{loc}</loc>{alts}</url>")
+
+    xml = (
+        '<?xml version="1.0" encoding="UTF-8"?>'
+        '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" '
+        'xmlns:xhtml="http://www.w3.org/1999/xhtml">'
+        + "".join(urls) + "</urlset>"
+    )
+    return Response(content=xml, media_type="application/xml")
+
+
 @router.get("/site")
 def get_public_site(tenant: str = "", site: str = "", market: str = "", db: Session = Depends(get_db)):
     """匿名读取已发布站点（品牌 / 联系 / 导航 / 首页区块 / 产品）。

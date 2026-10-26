@@ -12,6 +12,22 @@ const MARKET_META = {
   'ru-RU': { flag: '🇷🇺', label: 'Русский', lang: 'ru-RU' },
 }
 
+/** Yandex Metrika 接入位：填入计数器 ID(如 '12345678')即自动注入官方统计脚本(俄区站点)。
+ *  为空时不注入——诚实集成点,不假装已埋点。 */
+const YANDEX_METRIKA_ID = ''
+
+/** 社交发现卡(OG/Twitter)：分享到 VK/Instagram/微信时渲染品牌卡片而非裸链 */
+function setMeta(attr, key, content) {
+  if (!content) return
+  let el = document.head.querySelector(`meta[${attr}="${key}"]`)
+  if (!el) {
+    el = document.createElement('meta')
+    el.setAttribute(attr, key)
+    document.head.appendChild(el)
+  }
+  el.setAttribute('content', content)
+}
+
 /** 调色盘覆盖按站点记忆(仅本地预览,不写回已发布内容) */
 function loadPalette(slug) {
   try {
@@ -59,7 +75,31 @@ export default function PublicMarketSite() {
       document.head.appendChild(desc)
     }
     if (seo.description) desc.content = seo.description
-  }, [seo.title, seo.description])
+    // 社交发现卡(OG/Twitter)——og:image 取首屏 hero 真实图(绝对地址才有效)
+    const heroImg = (v?.layout_schema?.sections || []).find((s) => s.type === 'hero')?.props?.image
+    const img = /^https?:\/\//.test(heroImg || '') ? heroImg : ''
+    setMeta('property', 'og:title', seo.title)
+    setMeta('property', 'og:description', seo.description)
+    setMeta('property', 'og:type', 'website')
+    setMeta('property', 'og:url', window.location.href)
+    setMeta('property', 'og:image', img)
+    setMeta('property', 'og:locale', v?.locale || market)
+    setMeta('name', 'twitter:card', 'summary_large_image')
+    setMeta('name', 'twitter:title', seo.title)
+    setMeta('name', 'twitter:description', seo.description)
+    setMeta('name', 'twitter:image', img)
+    // Yandex Metrika 接入位:配置了计数器 ID 才注入官方脚本(俄区统计)
+    if (YANDEX_METRIKA_ID && market === 'ru-RU' && !document.getElementById('ym-script')) {
+      const s = document.createElement('script')
+      s.id = 'ym-script'
+      s.async = true
+      s.src = 'https://mc.yandex.ru/metrika/tag.js'
+      s.onload = () => {
+        if (window.ym) window.ym(Number(YANDEX_METRIKA_ID), 'init', { clickmap: true, trackLinks: true, accurateTrackBounce: true })
+      }
+      document.head.appendChild(s)
+    }
+  }, [seo.title, seo.description, v, market])
 
   if (err) {
     return (
