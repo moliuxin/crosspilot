@@ -45,7 +45,7 @@ async function run() {
   await page.locator('.seg-row').nth(1).locator('button', { hasText: '品牌色' }).click()
   await page.locator('.property-group select').first().selectOption('loose')
   await sleep(200)
-  await page.locator('.head-actions .primary-btn').click()
+  await page.getByRole('button', { name: '保存页面' }).click()
   await page.waitForSelector('.dirty-pill', { state: 'detached', timeout: 8000 })
   ok('编辑器样式已保存', true)
 
@@ -101,7 +101,7 @@ async function run() {
   await page.locator('.seg-row').nth(1).locator('button', { hasText: '浅色' }).click()
   await page.locator('.property-group select').first().selectOption('comfortable')
   await sleep(200)
-  await page.locator('.head-actions .primary-btn').click()
+  await page.getByRole('button', { name: '保存页面' }).click()
   await page.waitForSelector('.dirty-pill', { state: 'detached', timeout: 8000 })
 
   await site.reload({ waitUntil: 'networkidle' })

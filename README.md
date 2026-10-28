@@ -1,6 +1,6 @@
 # WorkBuddy SitePilot — AI 外贸独立站智能体（全栈版）
 
-**前端** React 18 + Vite 5 &nbsp;·&nbsp; **后端** FastAPI + SQLAlchemy + SQLite/Postgres
+**前端** React 18 + Vite 5 &nbsp;·&nbsp; **后端** FastAPI + SQLAlchemy + PostgreSQL
 
 一个**可运行、可演示、可构建、数据真落库**的 AI 外贸独立站平台：真实路由、表单校验、
 数据状态、FastAPI 真后端、产品/询盘增删改查、AI 生成流程状态机、免费 1 次限制、
@@ -13,17 +13,23 @@
 
 ## 一、快速开始
 
-### 1. 启动后端（FastAPI）
+### 1. 启动后端（FastAPI + PostgreSQL）
 
 ```bash
+# 本地开发数据库（端口 55432，使用临时数据卷）
+docker compose -f docker-compose.test.yml up -d
+
 cd backend
 pip install -r requirements.txt
+export SITEPILOT_DATABASE_URL=postgresql+psycopg://crosspilot:crosspilot@127.0.0.1:55432/crosspilot_test
+python -m app.bootstrap        # 建表 + 种子
 uvicorn app.main:app --reload --port 8000
 # 接口文档: http://127.0.0.1:8000/docs
 # 健康检查: http://127.0.0.1:8000/api/health
 ```
 
 首次启动自动建表并写入演示种子数据（4 个产品 / 5 条询盘 / 站点状态 / 用量）。
+`SITEPILOT_AUTO_INIT=false` 时不会在 API 启动阶段自动建表/播种，由 `python -m app.bootstrap` 或 Docker Compose 的 init 服务负责。
 
 ### 2. 启动前端
 
@@ -38,12 +44,16 @@ npm run preview  # 预览构建产物，默认 4173
 - 首次建站流程：`#/onboarding`（企业资料 → Hero 预览 → 企业认证 → AI 生成等待页 → 后台）
 - 客户独立站前台：`/site-preview.html`（RFQ 提交直连后端）
 
-### 3. 后端单测
+### 3. 后端单测（PostgreSQL）
 
 ```bash
+docker compose -f docker-compose.test.yml up -d
 cd backend
-pytest          # 137 passed（pytest.ini 已配置，开箱即用）
+SITEPILOT_TEST_DATABASE_URL=postgresql+psycopg://crosspilot:crosspilot@127.0.0.1:55432/crosspilot_test \
+  pytest
 ```
+
+测试库默认连接 `127.0.0.1:55432/crosspilot_test`，每个用例前 truncate 隔离；不会回退到开发库。
 
 ### 4. 浏览器端联调（真实点击验证）
 
@@ -350,10 +360,11 @@ bulkSampleText()         // 生成可粘贴的示例清单
 
 ---
 
-## 九、数据库结构（SQLite → 可换 Postgres）
+## 九、数据库结构（PostgreSQL）
 
-> 建表由 SQLAlchemy `create_all` 完成；SQLite 缺列场景由 `main._migrate_sqlite()` 用 `PRAGMA table_info` + `ALTER TABLE` 补齐（已覆盖 `tenants.public_slug`、Subscription 回填、public_slug 回填）。
-> 换 Postgres 只需设 `SITEPILOT_DATABASE_URL`，无需改代码。
+> 本项目仅支持 PostgreSQL。建表由 `python -m app.bootstrap` / Docker Compose 的 init 服务执行
+> `Base.metadata.create_all` 完成，并写入种子与修复默认站点关联。
+> 当前未引入 Alembic：仅支持全新数据库；已有库的结构升级需手工迁移或重建数据卷。
 
 **账户 / 企业 / 权限（6 张）**
 
@@ -388,7 +399,8 @@ bulkSampleText()         // 生成可粘贴的示例清单
 
 | 变量 | 默认 | 说明 |
 | --- | --- | --- |
-| `SITEPILOT_DATABASE_URL` | `sqlite:///backend/sitepilot.db` | 数据库（生产可换 Postgres） |
+| `SITEPILOT_DATABASE_URL` | `postgresql+psycopg://crosspilot:crosspilot@127.0.0.1:5432/crosspilot` | PostgreSQL 连接串（不支持 SQLite） |
+| `SITEPILOT_AUTO_INIT` | `true` | API 启动时是否自动建表+播种；Compose 中由 init 服务执行并关闭 |
 | `SITEPILOT_CORS_ORIGINS` | `*` | 允许跨域来源（逗号分隔） |
 | `SITEPILOT_APP_BASE_PATH` | `/` | 部署子路径（如 `/crosspilot/`，外部 Nginx 不剥离前缀） |
 | `SITEPILOT_API_BASE_PATH` | 派生 | API 路由前缀；留空 = `${SITEPILOT_APP_BASE_PATH}api` |
@@ -396,6 +408,7 @@ bulkSampleText()         // 生成可粘贴的示例清单
 | `SITEPILOT_LLM_PROVIDER` | `mock` | `mock` / `openai` |
 | `VITE_API_BASE` | 开发默认 `http://127.0.0.1:8000` | 前端指向的后端完整地址（构建时注入） |
 | `VITE_API_BASE_PATH` | 派生 | 同源 API 前缀；仅当 API 不挂在应用路径下时需构建时注入（见 `src/config/paths.js`） |
+| `VITE_DEMO_SITES_ENABLED` | `false` | 是否启用固定 slug 的 Skill 演示站（导入演示数据库后设为 `true` 并重建 web） |
 
 ---
 
@@ -404,9 +417,9 @@ bulkSampleText()         // 生成可粘贴的示例清单
 | 项 | 状态 | 验证方式 |
 | --- | --- | --- |
 | `npm install / dev / build` | ✅ | `vite build` 79 modules 通过 |
-| 后端 45 端点 + Pydantic 校验 | ✅ | `pytest` 137 passed |
+| 后端 45 端点 + Pydantic 校验 | ✅ | `pytest` 356 passed / 1 skipped（PostgreSQL） |
 | 前后端联调完整演示路径 | ✅ | Playwright 88/88（后台 25 + 前台 13 + 既有 50），运行时错误 0 |
-| 数据真落库（SQLite） | ✅ | 刷新后数据保留，`/api/*` 可查 |
+| 数据真落库（PostgreSQL） | ✅ | 刷新后数据保留，`/api/*` 可查 |
 | Agent 人工确认硬约束 | ✅ | 403 / 409 单测覆盖 |
 | 免费额度 402 付费墙 | ✅ | 单测 + 联调覆盖 |
 | Credits 余额不足 402 + 充值恢复 | ✅ | 单测 + 联调覆盖 |

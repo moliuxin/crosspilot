@@ -29,7 +29,7 @@
 | 付费墙 | `PaywallModal` 套餐清单来自 `entitlements.plans`（不再硬编码）；点「选择套餐」调 `api.createServiceOrder(...)` → **真实落库为 ServiceOrder**，不是 toast |
 | 输入示例 | `POST /api/service-orders` body `{"plan_id":"growth","feature_key":"page.publish","note":"E2E 用例"}` |
 | 输出示例 | `{"ok":true,"order":{"id":"so_...","tenant_id":1,"plan_id":"growth","feature_key":"page.publish","status":"pending","amount":1280}}` |
-| 刷新持久 | ServiceOrder 落 SQLite；刷新「模板商城 → 我的购买记录」仍在（E2E 断言） |
+| 刷新持久 | ServiceOrder 落 PostgreSQL；刷新「模板商城 → 我的购买记录」仍在（E2E 断言） |
 | 权限判断 | 免费版调 `POST /api/seo/optimize` → 402 + structured detail；Growth 版 → 200 |
 | 错误处理 | 402 结构化详情；`service-orders` 无 plan/feature → 400 |
 | 自动测试 | `tests/test_entitlements.py`（25 项） |
@@ -157,8 +157,8 @@ Playwright E2E 8 套     159 项断言全通过
 | 角色 | `owner`（企业管理员，注册即此角色）/ `staff`（企业员工）/ `operator`（平台运营，不绑定租户，可跨租户） |
 | 隔离列 | `products / inquiries / pages / tasks / drafts / versions / credit_logs` 各加 `tenant_id`（索引），默认 1 |
 | 单例表改造 | `site_state / usage / credits` 原本全站一行（`id=1`），改为**主键即 tenant_id** —— 一家企业一行站点状态、一份免费额度 |
-| 存量迁移 | 启动时 `_migrate_sqlite()`：`PRAGMA table_info` 探测 + `ALTER TABLE ADD COLUMN tenant_id`，创建默认租户，`UPDATE ... SET tenant_id = 1 WHERE tenant_id IS NULL` —— **老数据不丢，全部归入默认租户** |
-| 代码位置 | `backend/app/models.py`、`backend/app/main.py` 的 `_migrate_sqlite()` |
+| 存量迁移 | 全新库由 `python -m app.bootstrap` 建表并播种；未引入 Alembic，已有库需手工迁移或重建数据卷 |
+| 代码位置 | `backend/app/seed.py`、`backend/app/bootstrap.py` |
 
 ### 12.2 鉴权：JWT + bcrypt
 
@@ -209,7 +209,7 @@ Playwright E2E 8 套     159 项断言全通过
 
 - **多人协作邀请未做**：`staff` 角色已建模但暂无邀请流程，注册只能建 `owner`。多租户隔离已完整，缺的只是「同一租户内多账号」的分发入口。
 - **operator 跨租户切换未做 UI**：后端 `resolve_tenant_id` 支持 `X-Tenant-Id` 覆盖（仅 operator 生效），前端暂无租户切换器。
-- **SQLite 行级无 RLS**：隔离靠应用层 `tenant_id` 过滤 + 依赖注入，不是数据库级 Row Level Security。换 Postgres 后建议叠加 RLS 做第二道防线。
+- **PostgreSQL 未启用 RLS**：隔离靠应用层 `tenant_id` 过滤 + 依赖注入，不是数据库级 Row Level Security。生产建议叠加 RLS 做第二道防线。
 - **JWT 无刷新/吊销**：72 小时过期即需重新登录，没有 refresh token 与黑名单。
 
 ---
@@ -238,7 +238,7 @@ Playwright E2E 8 套     159 项断言全通过
 | --- | --- |
 | API 路径 | `GET /api/seo/diff/{id}` 返回 `write` 结构化补丁；`POST /api/drafts`（创建带 patch 的草稿）；`POST /api/publish` 执行 patch 真实写库 |
 | 写入内容 | title / slug / meta_description / h1 / 8 条结构化 FAQ（q+a）/ 8 条 image_alt / schema_enabled / faq_schema_enabled —— 均写入 `products.seo` JSON 列，发布后 `GET /api/products/{id}` 可见 |
-| DB 变化 | `drafts` 表新增 `patch` 列（结构化补丁，与展示用 diff 分离）；启动时 `_migrate_sqlite()` 自动 `ALTER TABLE`（旧库兼容） |
+| DB 变化 | `drafts` 表包含 `patch` 列（结构化补丁，与展示用 diff 分离） |
 | 前端入口 | SEO 优化页（SEOCompare）生成 Diff → 确认发布；Agent 页「优化 … 商品页」快捷指令 |
 | 自动化测试 | `backend/tests/test_publish_versions.py`（7 用例）：`test_seo_publish_writes_content_not_just_scores` 锁定「发布必须写真字段」；未确认 403 / 重复发布 409 / noop patch 409 |
 | 真实点击 | 发布前后 `GET /api/products/prod_002`：title `UF Water Filter Machine` → `Ultrafiltration Unit Manufacturer & Supplier \| AQUAFLOW AF-UF-600`；faq 0 → 8 条；seo 58→83、geo 40→70 |
@@ -349,12 +349,12 @@ Playwright E2E 8 套     159 项断言全通过
 
 | 项 | 状态 | 实现位置 |
 | --- | --- | --- |
-| FastAPI + SQLAlchemy + SQLite 真后端 | DONE | `backend/app/main.py`、`database.py`、`models.py`（9 ORM 模型） |
+| FastAPI + SQLAlchemy + PostgreSQL 真后端 | DONE | `backend/app/main.py`、`database.py`、`models.py`（9 ORM 模型） |
 | 45 个 REST 端点 + Pydantic 校验 | DONE | `backend/app/routers/`（company/products/inquiries/pages/tasks/credits/site/seo/agent） |
 | 前端双链路 adapter（backend→local 降级） | DONE | `src/services/api.js`（`detectBackend()` 探测 + `withFallback()`） |
 | 顶栏后端连接状态徽章 | DONE | `src/components/layout/Topbar.jsx`（`.data-mode`，已连接后端 / 本地模式） |
 | LLM adapter 抽象（mock / openai 兼容） | DONE | `backend/app/llm.py`、`services/ai_service.py`（失败自动降级并标注 `ai_source`） |
-| 后端单测 | DONE | `backend/tests/`（137 用例，含 403/409/402 安全规则） |
+| 后端单测 | DONE | `backend/tests/`（356 passed / 1 skipped，PostgreSQL；含 403/409/402 安全规则） |
 | 前后端联调 E2E | DONE | Playwright 88/88（新增功能真落库后端，运行时错误 0） |
 
 ---
@@ -366,7 +366,7 @@ Playwright E2E 8 套     159 项断言全通过
 | 1 | 有真实路由 | DONE | `src/App.jsx`（HashRouter，15 条路由） |
 | 2 | 有表单校验 | DONE | 产品表单 `ProductForm.jsx`（名称/型号必填）；RFQ 表单 `src/site-main.jsx`（必填+邮箱格式）；建站表单 `Onboarding.jsx`；**后端 Pydantic 二次校验**（`backend/app/schemas.py`） |
 | 3 | 有数据状态 | DONE | `src/app/store/AppContext.jsx`（useReducer）+ 各页面本地 state |
-| 4 | 有本地持久化 | DONE | 主链路：**后端 SQLite 落库**；降级链路：`src/services/db.js`（localStorage `sitepilot.db.v1`） |
+| 4 | 有本地持久化 | DONE | 主链路：**后端 PostgreSQL 落库**；降级链路：`src/services/db.js`（localStorage `sitepilot.db.v1`） |
 | 5 | 有 Mock API adapter | DONE | `src/services/api.js`：**统一 adapter 双链路**，`api.products.*` / `api.inquiries.*` / `api.site.*` / `api.seo.*` / `api.agent.*` 命名空间全部实现 |
 | 6 | 产品/询盘/页面增删改查 | DONE | 产品：`Products.jsx` + `POST/PUT/DELETE /api/products`；询盘：`Inquiries.jsx` + `PUT /api/inquiries/{id}`；页面：`PageEditor.jsx` |
 | 7 | AI 生成流程状态机 | DONE | `Onboarding.jsx`（form→hero→verify→generating→done）；`AiWaiting.jsx` 6 步推进 |
@@ -398,7 +398,7 @@ Playwright E2E 8 套     159 项断言全通过
 | 询盘中心列表/详情/状态 | DONE | `Inquiries.jsx` + `PUT /api/inquiries/{id}`（枚举校验） |
 | 单产品 SEO 优化 Diff | DONE | `SEOCompare.jsx` + `POST /api/seo/optimize`（生成草稿，不改线上） |
 | Agent 完整流程 | DONE | `AgentPage.jsx` + `POST /api/agent/run`（自然语言/结构化双模式） |
-| 数据保存 | DONE | 后端 SQLite（重启后仍在）；降级时 localStorage |
+| 数据保存 | DONE | 后端 PostgreSQL（重启后仍在）；降级时 localStorage |
 
 ## 四、P1 逐条对照
 
@@ -503,7 +503,7 @@ B6 被拒后市场数未变（状态未被污染）.................... OK
 
 ## 八、本轮验证记录（E）：筛选 / 编辑器样式 / 前台渲染
 
-**后端 `pytest` 137 passed**（本轮 P0 整改后更新为 150 passed，见第十一节），`npm run build` 通过。
+**后端 `pytest` 356 passed / 1 skipped（PostgreSQL）**，`npm run build` 通过。
 
 **商家后台联调（`test/e2e.mjs`，25/25，运行时错误 0）**
 

@@ -3,11 +3,16 @@
 AI 外贸独立站智能体的后端。提供产品 / 询盘 / 站点 / SEO / Agent 全套 REST 接口，
 AI 能力支持 **mock**（默认，零外部依赖）与 **真实 LLM**（OpenAI 兼容协议）双 provider。
 
-## 快速开始
+## 快速开始（仅支持 PostgreSQL）
 
 ```bash
+# 本地开发数据库（临时数据，端口 55432）
+docker compose -f docker-compose.test.yml up -d
+
 cd backend
 pip install -r requirements.txt
+export SITEPILOT_DATABASE_URL=postgresql+psycopg://crosspilot:crosspilot@127.0.0.1:55432/crosspilot_test
+python -m app.bootstrap
 uvicorn app.main:app --reload --port 8000
 ```
 
@@ -21,7 +26,8 @@ uvicorn app.main:app --reload --port 8000
 
 | 变量 | 默认 | 说明 |
 | --- | --- | --- |
-| `SITEPILOT_DATABASE_URL` | `sqlite:///backend/sitepilot.db` | 生产可换 `postgresql+psycopg://...` |
+| `SITEPILOT_DATABASE_URL` | `postgresql+psycopg://crosspilot:crosspilot@127.0.0.1:5432/crosspilot` | PostgreSQL 连接串（不支持 SQLite） |
+| `SITEPILOT_AUTO_INIT` | `true` | 启动时自动建表+播种；Compose 中由 init 服务执行并关闭 |
 | `SITEPILOT_CORS_ORIGINS` | `*` | 前端地址，逗号分隔 |
 | `SITEPILOT_LLM_PROVIDER` | `mock` | `mock` 或 `openai` |
 | `SITEPILOT_LLM_API_KEY` | 空 | 切真实模型时填写 |
@@ -45,8 +51,10 @@ uvicorn app.main:app --port 8000
 ## 运行测试
 
 ```bash
+docker compose -f docker-compose.test.yml up -d
 cd backend
-pytest          # 137 passed（pytest.ini 已配置，开箱即用）
+SITEPILOT_TEST_DATABASE_URL=postgresql+psycopg://crosspilot:crosspilot@127.0.0.1:55432/crosspilot_test \
+  pytest
 ```
 
 覆盖：产品增删改查 + 校验、**批量导入（含 200 条边界与逐行容错）**、**Excel(.xlsx) 解析（真实文件往返）**、
@@ -117,7 +125,7 @@ backend/
 │       ├── site.py       站点状态/用量/草稿/发布/健康/指标
 │       ├── seo.py        SEO Diff 与优化草稿
 │       └── agent.py      Agent 指令
-├── tests/                pytest（137 用例）
+├── tests/                pytest（356 passed / 1 skipped，PostgreSQL）
 ├── pytest.ini
 ├── requirements.txt
 └── .env.example

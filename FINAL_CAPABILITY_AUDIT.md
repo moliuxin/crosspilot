@@ -84,7 +84,7 @@ backend/tests/test_generation_and_entitlements.py    诚实断言修正
 
 ## 5. Migration(增量,老数据兼容)
 
-- `inquiries` 补 5 列(默认空串,ensure_columns 方言感知,SQLite/PG 双兼容)
+- `inquiries` 包含 5 个快照/来源列（默认空串）
 - 数据纠偏(幂等 UPDATE):mock SVG 的 AI_GENERATED→FALLBACK,实测 108 条
 - 无删表/无重置
 

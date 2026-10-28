@@ -145,89 +145,112 @@ INQUIRIES = [
 ]
 
 
-def seed_if_empty(db: Session) -> bool:
-    """数据库为空时写入种子数据。返回是否执行了写入。"""
+def seed_if_empty(db: Session, *, include_demo_account: bool = True) -> bool:
+    """数据库为空时写入种子数据。返回是否执行了写入。
+
+    顺序很重要（PostgreSQL 强制外键）：
+    Tenant → Product → Inquiry → 租户单例 → Demo 账号 / 订阅 / 授权 → 默认站点与关联。
+    整个 seed 在一个事务内完成，失败时整体回滚，避免“有产品但没租户/站点”的半套数据。
+    """
     if db.query(models.Product).count() > 0:
         return False
 
-    for p in PRODUCTS:
-        db.add(models.Product(**p))
-    # Postgres 强制外键（inquiries.product_id → products.id）：两表无 ORM 级依赖时
-    # SQLAlchemy 按表名字母序刷库，inquiries 会先于 products 执行而违反外键。
-    # 先 flush 让产品落库，再挂询盘。
-    db.flush()
-    for i in INQUIRIES:
-        db.add(models.Inquiry(**i))
+    try:
+        _ensure_default_tenant(db)
 
-    db.add(
-        models.SiteState(
-            id=1,
-            company_name="AQUAFLOW Industrial",
-            industry="工业水处理设备",
-            primary_products="centrifugal pump, process pump, RO system, ultrafiltration unit",
-            # 与「免费版含 1 个新增市场版本」规则一致：初始仅默认市场，
-            # 让「生成新市场版本」与付费门槛在演示中真实可触发。
-            target_markets=["en-US"],
-            language="zh-CN",
-            plan="free",
-            publish_status="draft",
-            publish_count=0,
-            verified=True,
-        )
-    )
-    db.add(models.Usage(id=1, free_generation_limit=1, free_generation_used=0))
-    db.add(models.Credit(id=1, balance=1860, total_granted=1860))
+        for p in PRODUCTS:
+            db.add(models.Product(**p))
+        # PostgreSQL 强制外键（inquiries.product_id → products.id）：
+        # 先 flush 让产品落库，再挂询盘。
+        db.flush()
+        for i in INQUIRIES:
+            db.add(models.Inquiry(**i))
 
-    # 演示用的额度流水
-    db.add(
-        models.CreditLog(
-            id="cl_seed_001",
-            skill="AI 文案生成",
-            cost=20,
-            balance_after=1880,
-            note="产品描述生成",
+        db.add(
+            models.SiteState(
+                id=models.DEFAULT_TENANT_ID,
+                company_name="AQUAFLOW Industrial",
+                industry="工业水处理设备",
+                primary_products="centrifugal pump, process pump, RO system, ultrafiltration unit",
+                # 演示数据先只放默认市场，便于体验“生成新市场版本”流程。
+                target_markets=["en-US"],
+                language="zh-CN",
+                plan="growth",
+                publish_status="draft",
+                publish_count=0,
+                verified=True,
+            )
         )
-    )
-    db.add(
-        models.CreditLog(
-            id="cl_seed_002",
-            skill="套餐赠送",
-            cost=-2000,
-            balance_after=1900,
-            note="Starter 套餐开通赠送",
-        )
-    )
-    db.add(
-        models.CreditLog(
-            id="cl_seed_003",
-            skill="SEO/GEO 审计",
-            cost=40,
-            balance_after=1860,
-            note="全站 SEO 体检",
-        )
-    )
-    _seed_demo_account(db)
-    # 套餐字典 + 默认租户订阅（权限真源，必须随种子一起就绪）
-    from . import entitlements
+        db.add(models.Usage(id=models.DEFAULT_TENANT_ID, free_generation_limit=1, free_generation_used=0))
+        db.add(models.Credit(id=models.DEFAULT_TENANT_ID, balance=1860, total_granted=1860))
 
-    entitlements.seed_plans(db)
-    entitlements.ensure_subscription(db, 1, plan_id="free")
-    db.commit()
-    # 演示账号=已购买：预开通 AI 画笔（幂等，存量库同样补齐）
-    _grant_demo_brush(db)
+        # 演示用的额度流水
+        db.add(
+            models.CreditLog(
+                id="cl_seed_001",
+                skill="AI 文案生成",
+                cost=20,
+                balance_after=1880,
+                note="产品描述生成",
+            )
+        )
+        db.add(
+            models.CreditLog(
+                id="cl_seed_002",
+                skill="套餐赠送",
+                cost=-2000,
+                balance_after=1900,
+                note="Starter 套餐开通赠送",
+            )
+        )
+        db.add(
+            models.CreditLog(
+                id="cl_seed_003",
+                skill="SEO/GEO 审计",
+                cost=40,
+                balance_after=1860,
+                note="全站 SEO 体检",
+            )
+        )
 
-    # 多站点：为种子租户建默认站点，种子数据全部挂到它
-    _seed_default_site(db)
+        if include_demo_account:
+            _seed_demo_account(db)
+        # 套餐字典 + 默认租户订阅（权限真源，必须随种子一起就绪）
+        from . import entitlements
+
+        entitlements.seed_plans(db)
+        # 演示账号预置 Growth，便于本地完整演示付费能力；新注册账号仍是 free
+        entitlements.ensure_subscription(db, models.DEFAULT_TENANT_ID, plan_id="growth")
+        # 演示账号=已购买：预开通 AI 画笔（幂等）
+        _grant_demo_brush(db)
+
+        # 多站点：为种子租户建默认站点，种子数据全部挂到它
+        _seed_default_site(db)
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
+
     sync_pg_sequences(db)
     return True
 
 
+def ensure_default_site_links(db: Session) -> None:
+    """幂等修复默认租户的站点及关联数据（存量库 / 部分失败的 seed）。"""
+    if db.get(models.Tenant, models.DEFAULT_TENANT_ID) is None:
+        return
+    try:
+        _seed_default_site(db)
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
+
+
 def sync_pg_sequences(db: Session) -> None:
     """PostgreSQL：显式主键的种子数据不会推进 serial 序列，注册下一个租户会撞主键。
-    每次启动幂等地把所有整型自增主键序列推到 MAX(id)。SQLite 无此概念，直接跳过。
+    每次启动幂等地把整型自增主键序列推到 MAX(id)。
     """
-    if db.bind is None or db.bind.dialect.name != "postgresql":
-        return
     from sqlalchemy import text
 
     try:
@@ -241,47 +264,58 @@ def sync_pg_sequences(db: Session) -> None:
         logging.getLogger("sitepilot.seed").warning("PG 序列同步失败：%s", exc)
 
 
-def _seed_default_site(db: Session) -> None:
-    """给默认租户创建 Default Site 并回填 site_id / 站点-产品关联。
+def _ensure_default_tenant(db: Session) -> models.Tenant:
+    """确保默认租户存在（不依赖启动迁移）。"""
+    tenant = db.get(models.Tenant, models.DEFAULT_TENANT_ID)
+    if tenant is None:
+        tenant = models.Tenant(
+            id=models.DEFAULT_TENANT_ID,
+            name="AQUAFLOW Industrial",
+            industry="工业水处理设备",
+            plan="growth",
+            public_slug=f"t-{models.DEFAULT_TENANT_ID}-seed01",
+        )
+        db.add(tenant)
+        db.flush()
+    elif not tenant.public_slug:
+        tenant.public_slug = f"t-{models.DEFAULT_TENANT_ID}-seed01"
+        db.flush()
+    return tenant
 
-    与生产库 _migrate_multi_site 的行为保持一致：老数据归属默认站点，不丢。
-    """
+
+def _seed_default_site(db: Session) -> models.Site:
+    """给默认租户创建/复用 Default Site，并回填 site_id / 站点-产品关联。"""
     import secrets
 
     from .utils import slugify
 
-    tenant = db.get(models.Tenant, models.DEFAULT_TENANT_ID)
-    if tenant is None:
-        # 与 conftest 的种子租户约定一致（public_slug 固定，便于测试断言）
-        db.add(
-            models.Tenant(
-                id=models.DEFAULT_TENANT_ID,
-                name="AQUAFLOW Industrial",
-                industry="工业水处理设备",
-                plan="free",
-                public_slug=f"t-{models.DEFAULT_TENANT_ID}-seed01",
-            )
-        )
-        db.commit()
-        tenant = db.get(models.Tenant, models.DEFAULT_TENANT_ID)
-
-    if db.query(models.Site).filter(models.Site.tenant_id == models.DEFAULT_TENANT_ID).count() > 0:
-        return
-
-    site = models.Site(
-        id="site_seed_default",
-        tenant_id=models.DEFAULT_TENANT_ID,
-        name="AQUAFLOW Industrial",
-        slug=slugify("AQUAFLOW Industrial") or "default",
-        industry="工业水处理设备",
-        product_category="水处理设备",
-        target_markets=["en-US"],
-        status="draft",
-        is_default=True,
-        public_slug=f"s-{models.DEFAULT_TENANT_ID}-{secrets.token_hex(3)}",
+    tenant = _ensure_default_tenant(db)
+    site = (
+        db.query(models.Site)
+        .filter(models.Site.tenant_id == models.DEFAULT_TENANT_ID)
+        .order_by(models.Site.is_default.desc(), models.Site.created_at.asc())
+        .first()
     )
-    db.add(site)
-    db.commit()
+    if site is None:
+        state = db.get(models.SiteState, models.DEFAULT_TENANT_ID)
+        name = (tenant.name or "").strip() or "默认站点"
+        site = models.Site(
+            id="site_seed_default",
+            tenant_id=models.DEFAULT_TENANT_ID,
+            name=name,
+            slug=slugify(name) or "main",
+            industry=(getattr(state, "industry", "") or tenant.industry or ""),
+            product_category="",
+            target_markets=list(getattr(state, "target_markets", None) or ["en-US"]),
+            status=(getattr(state, "publish_status", None) or "draft"),
+            is_default=True,
+            public_slug=f"s-{models.DEFAULT_TENANT_ID}-{secrets.token_hex(3)}",
+        )
+        db.add(site)
+        db.flush()
+    elif not site.is_default:
+        site.is_default = True
+        db.flush()
 
     for row in db.query(models.Page).filter(models.Page.tenant_id == models.DEFAULT_TENANT_ID).all():
         if not row.site_id:
@@ -289,9 +323,18 @@ def _seed_default_site(db: Session) -> None:
     for row in db.query(models.Inquiry).filter(models.Inquiry.tenant_id == models.DEFAULT_TENANT_ID).all():
         if not row.site_id:
             row.site_id = site.id
+
+    linked = {
+        product_id
+        for (product_id,) in db.query(models.SiteProduct.product_id)
+        .filter(models.SiteProduct.site_id == site.id)
+        .all()
+    }
     for (pid,) in db.query(models.Product.id).filter(models.Product.tenant_id == models.DEFAULT_TENANT_ID).all():
-        db.add(models.SiteProduct(site_id=site.id, product_id=pid))
-    db.commit()
+        if pid not in linked:
+            db.add(models.SiteProduct(site_id=site.id, product_id=pid))
+
+    return site
 
 
 def _seed_demo_account(db: Session) -> bool:
@@ -344,6 +387,5 @@ def _grant_demo_brush(db: Session) -> bool:
             used=0,
         )
     )
-    db.commit()
     logger.info("已为演示租户 %s 预开通 brush.edit（AI 画笔）", tid)
     return True

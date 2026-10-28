@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { api } from '../../services/api'
 import { useApp } from '../../app/store/AppContext'
 import { useEntitlement } from '../../app/store/useEntitlement'
-import { TEMPLATES } from './templates-data'
+import { DEMO_SITES_ENABLED, TEMPLATES } from './templates-data'
 import './templates.css'
 
 const ORDER_STATUS = { pending: '待处理', approved: '已开通', rejected: '已驳回' }
@@ -129,7 +129,9 @@ export default function TemplatesPage() {
               <Link to={`/templates/${t.slug}`} className="tpl-preview" aria-label={`预览 ${t.name}`}>
                 <TemplateScrollPreview template={t} />
                 {t.popular ? <span className="tpl-hot">最受欢迎</span> : null}
-                {t.demoSlug ? <span className="tpl-ai-badge" title="由 CrossPilot Skill 流水线真实生成">✦ Skill 生成示例</span> : null}
+                {t.demoSlug && DEMO_SITES_ENABLED ? (
+                  <span className="tpl-ai-badge" title="由 CrossPilot Skill 流水线真实生成">✦ Skill 生成示例</span>
+                ) : null}
                 <span className="tpl-shot-hint">悬停滚动预览整页 ↕</span>
               </Link>
               <div className="tpl-body">
@@ -145,11 +147,10 @@ export default function TemplatesPage() {
                   ))}
                 </div>
                 <div className="tpl-actions">
-                  {t.demoSlug && (
+                  {t.demoSlug && DEMO_SITES_ENABLED ? (
                     <a className="ghost-btn" href={`/#/site/${t.demoSlug}/en-US/`} target="_blank" rel="noreferrer"
                       title="打开 Skill 流水线真实生成的完整站点">浏览</a>
-                  )}
-                  {!t.demoSlug && (
+                  ) : (
                     <Link className="ghost-btn" to={`/templates/${t.slug}`}>演示</Link>
                   )}
                   {!authed ? (

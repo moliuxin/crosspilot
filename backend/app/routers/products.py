@@ -204,6 +204,13 @@ def update_product(product_id: str, payload: schemas.ProductUpdate, db: Session 
 @router.delete("/{product_id}")
 def delete_product(product_id: str, db: Session = Depends(get_db), tid: int = Depends(tenant_scope)):
     p = scoped_get(db, models.Product, product_id, tid, detail="产品不存在")
+    # PostgreSQL 强制外键：先解除站点关联与询盘引用（询盘保留历史快照字段）
+    db.query(models.SiteProduct).filter(
+        models.SiteProduct.product_id == product_id
+    ).delete(synchronize_session=False)
+    db.query(models.Inquiry).filter(
+        models.Inquiry.product_id == product_id
+    ).update({models.Inquiry.product_id: None}, synchronize_session=False)
     db.delete(p)
     db.commit()
     return {"ok": True, "id": product_id}

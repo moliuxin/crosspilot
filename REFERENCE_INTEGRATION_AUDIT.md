@@ -1,6 +1,6 @@
 # REFERENCE_INTEGRATION_AUDIT.md — 参考工程审计(PHASE 0)
 
-> 主工程:CrossPilot(crosspilot-faron,React+Vite / FastAPI / SQLAlchemy / SQLite+PostgreSQL / 统一 LLM Provider / ImageProvider / Tenant→Sites→Draft→Publish→Version)
+> 主工程:CrossPilot(crosspilot-faron,React+Vite / FastAPI / SQLAlchemy / PostgreSQL / 统一 LLM Provider / ImageProvider / Tenant→Sites→Draft→Publish→Version)
 > 参考工程 A:`instant_site_ai-main`(零后端 Python 单文件 HTML 生成器 + 六阶段 Skill 规则包)
 > 参考工程 B:`jhworld-main`(Django + Nuxt 的俄语 B2B 展示站,含询盘/图库/案例)
 > 原则:**CrossPilot 是唯一主工程**。两个参考工程只吸收知识与结构思想,全部改造为 CrossPilot 架构;严禁引入 Django/Nuxt/第二套 Auth/DB/LLM。

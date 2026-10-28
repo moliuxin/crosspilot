@@ -187,7 +187,7 @@ def arm_d_full_crosspilot(tc: dict) -> list[dict]:
         for i, s in enumerate(sections):
             meta = COMPONENTS.get(s["type"], {})
             enriched.append({
-                "id": f"sec_{s["type"]}_{i}", "type": s["type"],
+                "id": f"sec_{s['type']}_{i}", "type": s["type"],
                 "variant": meta.get("default_variant", ""),
                 "props": {}, "component_meta": {"name": meta.get("name", s["type"])},
             })

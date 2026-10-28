@@ -1,10 +1,19 @@
-# CrossPilot 后端镜像（FastAPI + SQLAlchemy，默认 SQLite，compose 中切 Postgres）
+# CrossPilot 后端镜像（FastAPI + SQLAlchemy，PostgreSQL）
 # 构建上下文 = 仓库根目录：docker build -t crosspilot-api .
-FROM python:3.11-slim
+#
+# 国内构建默认走 DaoCloud 镜像 + 清华 PyPI；海外环境可在 .env 覆盖：
+#   PYTHON_IMAGE=python:3.11-slim
+#   PIP_INDEX_URL=https://pypi.org/simple
+ARG PYTHON_IMAGE=docker.m.daocloud.io/library/python:3.11-slim
+FROM ${PYTHON_IMAGE}
+
+ARG PIP_INDEX_URL=https://pypi.tuna.tsinghua.edu.cn/simple
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
-    PIP_NO_CACHE_DIR=1
+    PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    PIP_INDEX_URL=${PIP_INDEX_URL}
 
 WORKDIR /app
 

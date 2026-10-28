@@ -11,7 +11,6 @@ dist
 # Python 缓存与运行时数据（Postgres 化后不再需要宿主 db 文件）
 **/__pycache__
 **/.pytest_cache
-backend/sitepilot.db
 
 # 与运行无关的目录/文件
 test

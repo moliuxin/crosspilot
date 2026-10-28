@@ -18,20 +18,43 @@ web（nginx 容器，唯一入口）
                                  │
                                  ▼
                             db（postgres:16-alpine，数据卷 pgdata）
+                                 ▲
+                                 │
+                            init（一次性建表 + 播种 + 关联修复）
 ```
 
 - **外部 Nginx 不移除子路径前缀**（转发完整路径）。容器内各层（web 反代、后端路由挂载、前端 API 请求）使用同一套路径配置，任何一层都不需要知道域名。
 - 前端与 API **同源**（经 web 反代），无跨域问题。
-- 首次启动后端自动**建表 + 播种演示数据**。
+- 首次启动由独立的 `init` 服务执行建表 + 播种，`api` 等 init 成功后才启动，避免多实例并发建表。
+- 本项目仅支持 PostgreSQL，不再支持 SQLite。
 
 ## 一键启动
 
 ```bash
 cp .env.docker.example .env    # 修改密码、JWT 密钥、（可选）子路径
 docker compose up -d --build
+docker compose ps              # 等待 db / api / web healthy，init 显示 exited(0)
 ```
 
 打开 `http://localhost:8080${APP_BASE_PATH}`（默认 `http://localhost:8080/`）。
+
+本地演示账号：`demo@aquaflow-demo.com` / `demo-pass-123`（预置 Growth 套餐，仅用于本地演示）。
+
+### 国内构建加速
+
+默认已使用国内镜像源，可在 `.env` 覆盖：
+
+```env
+PYTHON_IMAGE=docker.m.daocloud.io/library/python:3.11-slim
+NODE_IMAGE=docker.m.daocloud.io/library/node:20-alpine
+NGINX_IMAGE=docker.m.daocloud.io/library/nginx:1.27-alpine
+POSTGRES_IMAGE=docker.m.daocloud.io/library/postgres:16-alpine
+PIP_INDEX_URL=https://pypi.tuna.tsinghua.edu.cn/simple
+NPM_REGISTRY=https://registry.npmmirror.com
+```
+
+海外环境可改为官方地址：`python:3.11-slim`、`node:20-alpine`、`nginx:1.27-alpine`、
+`postgres:16-alpine`、`https://pypi.org/simple`、`https://registry.npmjs.org`。
 
 ## 部署路径配置
 
@@ -147,11 +170,12 @@ location / {
 ## 常用命令
 
 ```bash
-docker compose ps                 # 查看状态（healthy 为就绪）
-docker compose logs -f api        # 后端日志（建表/播种/AI 降级）
+docker compose ps                 # 查看状态（healthy 为就绪，init 应为 exited(0)）
+docker compose logs -f init       # 建表 / 播种日志
+docker compose logs -f api        # 后端日志（AI 降级等）
 docker compose down               # 停止（数据保留在 pgdata 卷）
 docker compose down -v            # 停止并清空数据库（慎用）
-docker compose up -d --build api  # 只重建后端
+docker compose up -d --build api  # 只重建后端（会重新执行幂等 init）
 ```
 
 ## 接入真实 AI
@@ -171,7 +195,9 @@ SITEPILOT_LLM_MODEL=deepseek-chat
 ## 生产清单
 
 - [ ] `SITEPILOT_JWT_SECRET` 换成长随机串（默认值是开发密钥）
-- [ ] `POSTGRES_PASSWORD` 换强密码（仅限字母数字；数据库 URL 未做 URL 编码）
+- [ ] `POSTGRES_PASSWORD` 换强密码（仅限字母数字）；特殊字符请设置完整 `SITEPILOT_DATABASE_URL`（密码 URL 编码）
+- [ ] 生产环境设置 `SITEPILOT_ALLOW_SIGNUP=false`（按需）
+- [ ] 导入演示数据库前保持 `VITE_DEMO_SITES_ENABLED=false`，避免模板预览请求不存在的固定 slug
 - [ ] 子路径部署时确认 `.env` 的 `APP_BASE_PATH` 与外部 Nginx location 一致
 - [ ] 域名 / HTTPS / http→https 跳转由外部统一 Nginx 处理
 - [ ] 数据备份：`docker compose exec db pg_dump -U crosspilot crosspilot > backup.sql`
@@ -179,11 +205,16 @@ SITEPILOT_LLM_MODEL=deepseek-chat
 ## 数据库说明
 
 - 连接串：`postgresql+psycopg://user:pass@db:5432/crosspilot`（由 compose 注入）
-- 建表由 SQLAlchemy `create_all` 完成，**无需手工迁移**
-- `main.py` 里的 SQLite PRAGMA 增量迁移仅作用于存量 SQLite 库，Postgres 下自动跳过
+- 建表与种子由 `init` 服务执行 `python -m app.bootstrap` 完成
+- **未引入 Alembic**：当前只保证全新数据库可用；已有数据库的表结构升级需手工处理或重建卷
+- `/healthz` 会真实执行 `SELECT 1`，数据库不可用时返回 503
+- 测试库与开发库隔离：`docker compose -f docker-compose.test.yml up -d` 使用 55432 端口与临时卷
 
 ## 已知限制
 
+- 未引入 Alembic：当前只支持全新数据库；已有库结构变更需手工迁移或重建 `pgdata`
+- 演示数据库未导入：6 个模板站与机器人旗舰站的固定 slug 不存在；模板商城自动回落静态预览
+  （`VITE_DEMO_SITES_ENABLED=false`）。导入演示库后设为 `true` 并重建 web 镜像即可启用
 - 前端 API 前缀默认靠运行时推导（页面所在目录 + `api`）。若用户访问「不存在的前端深层路径」
   （如 `/crosspilot/foo/bar`，非 hash 路由路径），页面会由 nginx 兜底渲染，但 API 推导会失准。
   正常入口（`/crosspilot/` 与 hash 路由）不受影响；对确定性要求高时用 `VITE_APP_BASE_PATH` 构建注入

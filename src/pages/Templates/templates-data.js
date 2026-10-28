@@ -1,3 +1,7 @@
+/** 是否启用固定 slug 的 Skill 演示站（需要导入演示数据库后开启）。 */
+export const DEMO_SITES_ENABLED =
+  String(import.meta.env?.VITE_DEMO_SITES_ENABLED || '').toLowerCase() === 'true'
+
 /**
  * 模板商城数据（单一真源，前端展示 + 创建网站选择 + Demo 预览共用）。
  *

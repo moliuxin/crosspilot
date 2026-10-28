@@ -1,4 +1,4 @@
-"""数据库连接与会话管理（SQLAlchemy 2.x）。"""
+"""数据库连接与会话管理（SQLAlchemy 2.x + PostgreSQL）。"""
 from collections.abc import Generator
 
 from sqlalchemy import create_engine
@@ -8,10 +8,14 @@ from .config import get_settings
 
 settings = get_settings()
 
-# SQLite 需要 check_same_thread=False 才能在多线程（FastAPI 线程池）下使用
-connect_args = {"check_same_thread": False} if settings.database_url.startswith("sqlite") else {}
-
-engine = create_engine(settings.database_url, connect_args=connect_args, future=True)
+engine = create_engine(
+    settings.sqlalchemy_database_url,
+    pool_pre_ping=True,
+    pool_size=settings.db_pool_size,
+    max_overflow=settings.db_max_overflow,
+    pool_recycle=settings.db_pool_recycle,
+    future=True,
+)
 SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False, future=True)
 
 
