@@ -38,6 +38,7 @@ from .routers import (
     site,
     sites,
     tasks,
+    wordstat,
 )
 from .seed import seed_if_empty, sync_pg_sequences
 
@@ -335,6 +336,7 @@ for r in (
     agent.router,
     ai_router.router,
     skills_router.router,
+    wordstat.router,
 ):
     app.include_router(r, prefix=settings.api_prefix)
 

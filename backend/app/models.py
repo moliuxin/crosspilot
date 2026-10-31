@@ -830,6 +830,35 @@ class ServiceOrder(Base):
         }
 
 
+class WordstatDataset(Base):
+    """商机 BI：Yandex Wordstat 导入数据集（解析 + 意图分层 + 词族聚合后落库）。
+
+    source 区分 imported（CSV 导入，推荐工作流）/ live（服务器侧在线抓取，待网络可达启用）。
+    竞争度若为导入数据未附，服务层用搜索量分位代理并标注 comp_source，不冒充实测。
+    """
+
+    __tablename__ = "wordstat_datasets"
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    tenant_id: Mapped[int] = mapped_column(Integer, default=1, index=True)
+    label: Mapped[str] = mapped_column(String(120), default="")
+    source: Mapped[str] = mapped_column(String(16), default="imported")  # imported / live
+    payload: Mapped[dict] = mapped_column(MutableDict.as_mutable(JSON), default=dict)
+    created_by: Mapped[str] = mapped_column(String(255), default="")
+
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, index=True)
+
+    def to_dict(self) -> dict:
+        return {
+            "id": self.id,
+            "label": self.label,
+            "source": self.source,
+            "kw_count": len((self.payload or {}).get("keywords", [])),
+            "metrics": (self.payload or {}).get("metrics", {}),
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+        }
+
+
 def _humanize(dt: datetime | None) -> str:
     """把时间转成前端展示的相对时间（与 mock 阶段保持一致）。"""
     if not dt:

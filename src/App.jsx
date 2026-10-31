@@ -26,6 +26,7 @@ import TemplatePreview from './pages/Templates/TemplatePreview'
 import HelpPage from './pages/Help/HelpPage'
 import Geo from './pages/Geo/Geo'
 import GrowthFeature from './pages/AIGrowth/GrowthFeature'
+import BIMapPage from './pages/Growth/BIDashboard'
 import AnalyticsPage from './pages/Analytics/AnalyticsPage'
 import SettingsPage from './pages/Settings/SettingsPage'
 import Onboarding from './pages/Onboarding/Onboarding'
@@ -104,6 +105,7 @@ function Routed() {
         <Route path="customers" element={<CustomersPage />} />
         <Route path="growth" element={<AIGrowth />} />
         <Route path="growth/geo" element={<Geo />} />
+        <Route path="growth/bi-map" element={<BIMapPage />} />
         <Route path="growth/:feature" element={<GrowthFeature />} />
         <Route path="skills" element={<SkillCenter />} />
         <Route path="localization" element={<Localization />} />

@@ -1128,6 +1128,36 @@ export const api = {
       }
     )
   },
+
+  /* ================= 商机 BI · Wordstat 数据接入 ================= */
+  async wordstatImport({ label = '', content }) {
+    return withFallback(
+      () => http('POST', '/growth/wordstat/import', { label, content }),
+      async () => {
+        const err = new Error('Wordstat 导入需要后端支持，当前处于本地模式。')
+        err.status = 400
+        throw err
+      }
+    )
+  },
+  async wordstatDatasets() {
+    return withFallback(
+      () => http('GET', '/growth/wordstat/datasets'),
+      async () => []
+    )
+  },
+  async wordstatDataset(id) {
+    return withFallback(
+      () => http('GET', `/growth/wordstat/datasets/${encodeURIComponent(id)}`),
+      async () => null
+    )
+  },
+  async wordstatLive(keyword) {
+    return withFallback(
+      () => http('POST', '/growth/wordstat/live', { keyword }, undefined, { timeoutMs: 15000 }),
+      async () => ({ ok: false, reason: 'local-mode', hint: '本地模式无法探测网络' })
+    )
+  },
 }
 
 /* ================= 指令要求的命名空间别名 ================= */
