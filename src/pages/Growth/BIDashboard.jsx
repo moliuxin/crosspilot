@@ -158,7 +158,10 @@ export default function BIDashboard() {
           try {
             const detail = await api.wordstatDataset(meta.id)
             if (detail?.keywords?.length) {
-              map[`imp-${meta.id}`] = { label: meta.label, source: detail.source || meta.source || 'imported', keywords: detail.keywords }
+              map[`imp-${meta.id}`] = {
+                label: meta.label, source: detail.source || meta.source || 'imported',
+                keywords: detail.keywords, trendMonths: detail.trend_months || null,
+              }
             }
           } catch { /* 单个失败不阻塞 */ }
         }
@@ -181,6 +184,19 @@ export default function BIDashboard() {
   const current = keywords[selectedKw] || keywords[0]
   const timeRange = TIME_RANGES.find(([v]) => v === time) || TIME_RANGES[1]
   const timeLabel = timeRange[1]
+  // 趋势月标：真实数据用服务端月份标签，否则按最近 N 个月生成
+  const trendMonths = useMemo(() => {
+    const n = current?.trend?.length || 0
+    if (!n) return []
+    if (Array.isArray(raw.trendMonths) && raw.trendMonths.length === n) return raw.trendMonths
+    const out = []
+    const d = new Date()
+    for (let i = n - 1; i >= 0; i--) {
+      const m = new Date(d.getFullYear(), d.getMonth() - i, 1)
+      out.push(`${m.getMonth() + 1}月`)
+    }
+    return out
+  }, [raw, current])
   // 搜索热度卡：精确匹配优先，其次包含匹配的第一条
   const searchHit = useMemo(() => {
     if (!query.trim()) return null
@@ -262,7 +278,7 @@ export default function BIDashboard() {
           <span className="bd-clock">{now.toLocaleTimeString('zh-CN', { hour12: false })}</span>
           <select className="bd-select" value={industry} onChange={(e) => { setIndustry(e.target.value); setSelectedKw(0); setIntentFilter('all') }}>
             {Object.entries(allDatasets).map(([k, v]) => (
-              <option key={k} value={k}>{v.source === 'bukvarix' ? '🔌' : v.source === 'imported' ? '📥 ' : ''}{v.label}</option>
+              <option key={k} value={k}>{v.source === 'wordstat' ? '📡' : v.source === 'bukvarix' ? '🔌' : v.source === 'imported' ? '📥 ' : ''}{v.label}</option>
             ))}
           </select>
           <div className="bd-time-group">
@@ -361,11 +377,14 @@ export default function BIDashboard() {
             </div>
           </div>
           <div className="bd-panel bd-trend-panel">
-            <h3 className="bd-panel-title">📈 月度趋势 ·「{current?.kw}」</h3>
+            <h3 className="bd-panel-title">
+              📈 月度趋势 ·「{current?.kw}」
+              {current?.trend_source === 'wordstat_history' && <span className="bd-panel-sub">Wordstat 历史真实逐月</span>}
+            </h3>
             {current?.trend ? (
               <>
                 <Sparkline values={current.trend} w={480} h={78} />
-                <div className="bd-trend-months">{MONTHS.map((m) => <span key={m}>{m}</span>)}</div>
+                <div className="bd-trend-months">{trendMonths.map((m) => <span key={m}>{m}</span>)}</div>
               </>
             ) : (
               <div className="bd-no-data">导入数据不含历史序列 —— 趋势需 Wordstat 连续多月导出或在线抓取（部署于境外服务器）</div>
@@ -488,12 +507,14 @@ export default function BIDashboard() {
       <footer className="bd-footer">
         <span>
           数据来源：
-          {raw.source === 'bukvarix'
-            ? `🔌 Yandex Wordstat 库（经 Bukvarix API 实时拉取 · 区域=Весь мир · 近期月度频次）· 竞争度为搜索量分位代理`
-            : raw.source === 'imported'
-              ? `📥 Wordstat CSV 导入（${raw.label}）· 竞争度${keywords[0]?.comp_source === 'volume_rank_proxy' ? '为量级代理' : '为导入值'}`
-              : '预置行业演示数据（基于公开统计口径）'} ·
-          近一年逐月趋势需 Wordstat 网页版「История запроса」导出或 Yandex Cloud API（付费）
+          {raw.source === 'wordstat'
+            ? '📡 Yandex Wordstat 官方网站直采（登录态采集 · region=all · 近30天周期）· 竞争度为搜索量分位代理'
+            : raw.source === 'bukvarix'
+              ? '🔌 Yandex Wordstat 库（经 Bukvarix API · 区域=Весь мир · 近期月度频次）· 竞争度为搜索量分位代理'
+              : raw.source === 'imported'
+                ? `📥 Wordstat CSV 导入（${raw.label}）· 竞争度${keywords[0]?.comp_source === 'volume_rank_proxy' ? '为量级代理' : '为导入值'}`
+                : '预置行业演示数据（基于公开统计口径）'} ·
+          逐月历史：Wordstat「История запроса」当前官方故障中，恢复后可一键补采
         </span>
         <div className="bd-footer-actions">
           {status && <span className="bd-status" title={status}>{status}</span>}

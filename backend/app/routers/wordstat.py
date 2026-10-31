@@ -28,7 +28,10 @@ router = APIRouter(prefix="/growth/wordstat", tags=["growth-bi"])
 class ImportRequest(BaseModel):
     label: str = Field(default="", max_length=100)
     content: str = Field(min_length=5, max_length=400_000)
-    source: str = Field(default="imported", pattern="^(imported|bukvarix)$")
+    source: str = Field(default="imported", pattern="^(imported|bukvarix|wordstat)$")
+    # 逐月历史（可选）：{关键词: [近12个月搜索量...]} + 月份标签，来自 Wordstat「История запроса」
+    trends: dict[str, list[float]] = Field(default_factory=dict)
+    trend_months: list[str] = Field(default_factory=list)
 
 
 @router.post("/import")
@@ -44,6 +47,15 @@ def import_dataset(
             detail="未能解析出任何关键词行。请确认粘贴的是 Wordstat 导出内容（关键词<TAB>搜索量，每行一条）。",
         )
     enriched = ws.enrich_dataset(rows)
+    # 逐月历史注入（真实 Wordstat 历史，非演示序列）
+    trends = {k: v for k, v in (payload.trends or {}).items() if v}
+    if trends:
+        for k in enriched["keywords"]:
+            if k["kw"] in trends:
+                k["trend"] = trends[k["kw"]]
+                k["trend_source"] = "wordstat_history"
+        enriched["trend_months"] = payload.trend_months or []
+        enriched["trend_source"] = "wordstat_history"
     label = (payload.label or "").strip() or f"导入数据集 {rows[0]['kw'][:24]}"
     ds = WordstatDataset(
         id=f"ws-{secrets.token_hex(5)}",
