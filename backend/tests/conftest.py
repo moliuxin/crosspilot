@@ -1,4 +1,7 @@
-"""pytest 夹具：每个测试用独立的内存 SQLite，互不污染。
+"""pytest 夹具：每个测试使用独立数据库状态，统一跑在 PostgreSQL 上。
+
+测试库必须显式提供（默认连接 docker-compose.test.yml 的 55432），
+避免误连开发/生产数据库。
 
 多租户改造后，业务端点全部要求登录；付费权限体系落地后，付费能力又要求
 套餐支持。为了让历史用例继续表达「业务行为」本身，这里统一提供：
@@ -15,15 +18,20 @@ import sys
 
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
-from sqlalchemy.pool import StaticPool
+from sqlalchemy import text
 
-# 保证 `import app.*` 可用
+# 保证 `import app.*` 可用（必须在导入 app 之前设置数据库环境）
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+TEST_DATABASE_URL = os.environ.get(
+    "SITEPILOT_TEST_DATABASE_URL",
+    "postgresql+psycopg://crosspilot:crosspilot@127.0.0.1:55432/crosspilot_test",
+)
+os.environ["SITEPILOT_DATABASE_URL"] = TEST_DATABASE_URL
+os.environ["SITEPILOT_AUTO_INIT"] = "false"
+
 from app import entitlements, models  # noqa: E402
-from app.database import Base, get_db  # noqa: E402
+from app.database import Base, SessionLocal, engine, get_db  # noqa: E402
 from app.main import app  # noqa: E402
 from app.seed import seed_if_empty  # noqa: E402
 
@@ -33,36 +41,35 @@ SECOND_EMAIL = "rival@aquaflow-demo.com"
 SECOND_PASSWORD = "rival-pass-123"
 
 
-@pytest.fixture()
-def db_session():
-    """内存数据库会话（每测试一份）。"""
-    engine = create_engine(
-        "sqlite://",
-        connect_args={"check_same_thread": False},
-        poolclass=StaticPool,
-    )
+@pytest.fixture(scope="session", autouse=True)
+def _prepare_test_database():
+    """会话级建表；每个测试通过 TRUNCATE 隔离状态。"""
+    Base.metadata.drop_all(bind=engine)
     Base.metadata.create_all(bind=engine)
-    TestingSession = sessionmaker(bind=engine, autoflush=False, autocommit=False)
-    session = TestingSession()
-    seed_if_empty(session)
-    # 历史 seed 未写 tenant_id，统一归属默认租户，模拟线上迁移后的状态
-    for model in (models.Product, models.Inquiry, models.Page, models.TaskItem):
-        for row in session.query(model).all():
-            if getattr(row, "tenant_id", None) is None:
-                row.tenant_id = models.DEFAULT_TENANT_ID
-    # 生产环境由 _migrate_sqlite 建默认租户；测试库需自行补齐，
-    # 否则站点的 SiteState(id=1) 会悬空、public_slug 无从谈起。
-    if session.get(models.Tenant, models.DEFAULT_TENANT_ID) is None:
-        session.add(
-            models.Tenant(
-                id=models.DEFAULT_TENANT_ID,
-                name="AQUAFLOW Industrial",
-                industry="工业水处理设备",
-                plan="free",
-                public_slug="t-1-seed01",
-            )
-        )
-    entitlements.ensure_subscription(session, models.DEFAULT_TENANT_ID, plan_id="free")
+    yield
+    Base.metadata.drop_all(bind=engine)
+
+
+@pytest.fixture()
+def db_session(_prepare_test_database):
+    """PostgreSQL 会话（每测试一份干净数据）。
+
+    直接 TRUNCATE 所有表而不是每测重建 schema：性能更稳定，也能覆盖
+    应用中直接使用 SessionLocal 的路径。
+    """
+    tables = ", ".join(f'"{t.name}"' for t in Base.metadata.sorted_tables)
+    with engine.begin() as conn:
+        conn.execute(text(f"TRUNCATE TABLE {tables} RESTART IDENTITY CASCADE"))
+
+    session = SessionLocal()
+    seed_if_empty(session, include_demo_account=False)
+    # 测试以 free 为基线；需要付费能力的用例通过 _set_plan 显式升级
+    sub = entitlements.ensure_subscription(session, models.DEFAULT_TENANT_ID, plan_id="free")
+    sub.plan_id = "free"
+    sub.status = "active"
+    tenant = session.get(models.Tenant, models.DEFAULT_TENANT_ID)
+    if tenant is not None:
+        tenant.plan = "free"
     session.commit()
     try:
         yield session

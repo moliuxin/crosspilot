@@ -3,11 +3,8 @@
 所有配置项可用环境变量覆盖（前缀 SITEPILOT_），便于本地/校赛/生产多环境切换。
 """
 from functools import lru_cache
-from pathlib import Path
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
-
-BASE_DIR = Path(__file__).resolve().parent.parent
 
 
 def normalize_base_path(p: str) -> str:
@@ -32,8 +29,16 @@ class Settings(BaseSettings):
     # 浏览器侧 API 前缀；留空 = 从 app_base_path 派生（/ → /api，/crosspilot → /crosspilot/api）
     api_base_path: str = ""
 
-    # 数据库：默认 SQLite（校赛零依赖）；生产改 postgresql+psycopg://...
-    database_url: str = f"sqlite:///{BASE_DIR / 'sitepilot.db'}"
+    # 数据库：仅支持 PostgreSQL（本地开发可先 docker compose -f docker-compose.test.yml up -d）
+    database_url: str = "postgresql+psycopg://crosspilot:crosspilot@127.0.0.1:5432/crosspilot"
+
+    # 启动时自动建表 + 播种（Docker Compose 由独立 init 服务执行，故可关闭）
+    auto_init: bool = True
+
+    # 连接池（PostgreSQL 长连接场景下避免连接被回收后继续使用）
+    db_pool_size: int = 5
+    db_max_overflow: int = 10
+    db_pool_recycle: int = 1800
 
     # 跨域：前端 Vite dev server / 静态托管
     cors_origins: str = "*"
@@ -87,6 +92,21 @@ class Settings(BaseSettings):
     @property
     def cors_list(self) -> list[str]:
         return [o.strip() for o in self.cors_origins.split(",") if o.strip()]
+
+    @property
+    def sqlalchemy_database_url(self) -> str:
+        """规范化并校验数据库 URL：本项目仅支持 PostgreSQL。"""
+        url = (self.database_url or "").strip()
+        if url.startswith("postgres://"):
+            url = "postgresql+psycopg://" + url[len("postgres://"):]
+        elif url.startswith("postgresql://"):
+            url = "postgresql+psycopg://" + url[len("postgresql://"):]
+        if not url.startswith("postgresql+psycopg://"):
+            raise ValueError(
+                "SITEPILOT_DATABASE_URL 必须是 PostgreSQL URL"
+                "（postgresql+psycopg://user:pass@host:port/db）；本项目仅支持 PostgreSQL"
+            )
+        return url
 
     @property
     def llm_enabled(self) -> bool:

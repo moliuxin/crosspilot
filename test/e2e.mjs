@@ -172,7 +172,7 @@ async function run() {
 
   // 保存 → 后端落库
   ok('样式改动标记为未保存', await page.locator('.dirty-pill').isVisible())
-  const saveBtn = page.locator('.head-actions .primary-btn')
+  const saveBtn = page.getByRole('button', { name: '保存页面' })
   await saveBtn.click()
   await page.waitForSelector('.dirty-pill', { state: 'detached', timeout: 8000 })
   ok('保存后未保存标记消失', true)
@@ -203,7 +203,7 @@ async function run() {
   await page.locator('.seg-row').nth(1).locator('button', { hasText: '浅色' }).click()
   await page.locator('.property-group select').first().selectOption('comfortable')
   await sleep(200)
-  await page.locator('.head-actions .primary-btn').click()
+  await page.getByRole('button', { name: '保存页面' }).click()
   await page.waitForSelector('.dirty-pill', { state: 'detached', timeout: 8000 })
   ok('演示数据已复原', true)
 

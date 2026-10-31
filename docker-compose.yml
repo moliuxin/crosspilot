@@ -5,11 +5,48 @@
 #   docker compose up -d --build
 #   打开 http://localhost:8080
 #
-# 注意：POSTGRES_PASSWORD 请使用字母数字（数据库 URL 不做 URL 编码）
+# 注意：POSTGRES_PASSWORD 请使用字母数字；如必须使用特殊字符，
+#       请直接设置完整的 SITEPILOT_DATABASE_URL（需 URL 编码密码）。
+
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+x-api-build: &api-build
+  context: .
+  dockerfile: Dockerfile
+  args:
+    PYTHON_IMAGE: ${PYTHON_IMAGE:-docker.m.daocloud.io/library/python:3.11-slim}
+    PIP_INDEX_URL: ${PIP_INDEX_URL:-https://pypi.tuna.tsinghua.edu.cn/simple}
+
+x-api-env: &api-env
+  # ── 部署子路径（外部统一 Nginx 不剥离前缀；默认根路径部署）──
+  SITEPILOT_APP_BASE_PATH: ${APP_BASE_PATH:-/}
+  SITEPILOT_API_BASE_PATH: ${API_BASE_PATH:-}
+  # 数据库：Postgres（init 服务负责建表 + 播种）
+  SITEPILOT_DATABASE_URL: ${SITEPILOT_DATABASE_URL:-postgresql+psycopg://${POSTGRES_USER:-crosspilot}:${POSTGRES_PASSWORD:-crosspilot}@db:5432/${POSTGRES_DB:-crosspilot}}
+  SITEPILOT_AUTO_INIT: "false"
+  # 会话密钥：生产必须通过 .env 覆盖
+  SITEPILOT_JWT_SECRET: ${SITEPILOT_JWT_SECRET:-change-me-in-production}
+  SITEPILOT_JWT_EXPIRE_HOURS: ${SITEPILOT_JWT_EXPIRE_HOURS:-72}
+  # 前端静态资源与 API 同源（经 nginx 反代），CORS 保持宽松即可
+  SITEPILOT_CORS_ORIGINS: ${SITEPILOT_CORS_ORIGINS:-*}
+  SITEPILOT_ALLOW_SIGNUP: ${SITEPILOT_ALLOW_SIGNUP:-true}
+  # AI Provider：默认 mock 零依赖；接入真实模型改 .env
+  SITEPILOT_LLM_PROVIDER: ${SITEPILOT_LLM_PROVIDER:-mock}
+  SITEPILOT_LLM_API_KEY: ${SITEPILOT_LLM_API_KEY:-}
+  SITEPILOT_LLM_BASE_URL: ${SITEPILOT_LLM_BASE_URL:-https://api.openai.com/v1}
+  SITEPILOT_LLM_MODEL: ${SITEPILOT_LLM_MODEL:-gpt-4o-mini}
+  SITEPILOT_IMAGE_API_KEY: ${SITEPILOT_IMAGE_API_KEY:-}
+  SITEPILOT_IMAGE_BASE_URL: ${SITEPILOT_IMAGE_BASE_URL:-https://open.bigmodel.cn/api/paas/v4}
+  SITEPILOT_IMAGE_MODEL: ${SITEPILOT_IMAGE_MODEL:-cogview-4}
+  SITEPILOT_FREE_GENERATION_LIMIT: ${SITEPILOT_FREE_GENERATION_LIMIT:-1}
 
 services:
   db:
-    image: postgres:16-alpine
+    image: ${POSTGRES_IMAGE:-docker.m.daocloud.io/library/postgres:16-alpine}
     restart: unless-stopped
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-crosspilot}
@@ -22,47 +59,47 @@ services:
       interval: 5s
       timeout: 5s
       retries: 12
+    logging: *default-logging
 
-  api:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    restart: unless-stopped
-    environment:
-      # ── 部署子路径（外部统一 Nginx 不剥离前缀；默认根路径部署）──
-      SITEPILOT_APP_BASE_PATH: ${APP_BASE_PATH:-/}
-      SITEPILOT_API_BASE_PATH: ${API_BASE_PATH:-}
-      # 数据库：Postgres（首次启动自动建表 + 播种演示数据）
-      SITEPILOT_DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-crosspilot}:${POSTGRES_PASSWORD:-crosspilot}@db:5432/${POSTGRES_DB:-crosspilot}
-      # 会话密钥：生产必须通过 .env 覆盖
-      SITEPILOT_JWT_SECRET: ${SITEPILOT_JWT_SECRET:-change-me-in-production}
-      SITEPILOT_JWT_EXPIRE_HOURS: ${SITEPILOT_JWT_EXPIRE_HOURS:-72}
-      # 前端静态资源与 API 同源（经 nginx 反代），CORS 保持宽松即可
-      SITEPILOT_CORS_ORIGINS: ${SITEPILOT_CORS_ORIGINS:-*}
-      # AI Provider：默认 mock 零依赖；接入真实模型改 .env
-      SITEPILOT_LLM_PROVIDER: ${SITEPILOT_LLM_PROVIDER:-mock}
-      SITEPILOT_LLM_API_KEY: ${SITEPILOT_LLM_API_KEY:-}
-      SITEPILOT_LLM_BASE_URL: ${SITEPILOT_LLM_BASE_URL:-https://api.openai.com/v1}
-      SITEPILOT_LLM_MODEL: ${SITEPILOT_LLM_MODEL:-gpt-4o-mini}
-      SITEPILOT_IMAGE_API_KEY: ${SITEPILOT_IMAGE_API_KEY:-}
-      SITEPILOT_IMAGE_BASE_URL: ${SITEPILOT_IMAGE_BASE_URL:-https://open.bigmodel.cn/api/paas/v4}
-      SITEPILOT_IMAGE_MODEL: ${SITEPILOT_IMAGE_MODEL:-cogview-4}
-      SITEPILOT_FREE_GENERATION_LIMIT: ${SITEPILOT_FREE_GENERATION_LIMIT:-1}
+  init:
+    build: *api-build
+    image: crosspilot-api:local
+    restart: "no"
+    environment: *api-env
     depends_on:
       db:
         condition: service_healthy
+    command: ["python", "-m", "app.bootstrap"]
+    logging: *default-logging
+
+  api:
+    build: *api-build
+    image: crosspilot-api:local
+    restart: unless-stopped
+    environment: *api-env
+    depends_on:
+      db:
+        condition: service_healthy
+      init:
+        condition: service_completed_successfully
     healthcheck:
-      # /healthz 与部署前缀无关，改 APP_BASE_PATH 无需同步改这里
+      # /healthz 与部署前缀无关，且会真实检查 PostgreSQL 连通性
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/healthz', timeout=5)"]
       interval: 10s
       timeout: 5s
       retries: 12
       start_period: 20s
+    logging: *default-logging
 
   web:
     build:
       context: .
       dockerfile: docker/web/Dockerfile
+      args:
+        NODE_IMAGE: ${NODE_IMAGE:-docker.m.daocloud.io/library/node:20-alpine}
+        NGINX_IMAGE: ${NGINX_IMAGE:-docker.m.daocloud.io/library/nginx:1.27-alpine}
+        NPM_REGISTRY: ${NPM_REGISTRY:-https://registry.npmmirror.com}
+        VITE_DEMO_SITES_ENABLED: ${VITE_DEMO_SITES_ENABLED:-false}
     restart: unless-stopped
     environment:
       # ── 部署子路径（nginx 模板经 envsubst 运行时注入，改配置重启即生效）──
@@ -81,6 +118,7 @@ services:
       interval: 10s
       timeout: 5s
       retries: 6
+    logging: *default-logging
 
 volumes:
   pgdata:

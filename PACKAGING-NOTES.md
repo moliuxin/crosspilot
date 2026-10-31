@@ -72,7 +72,7 @@ cd backend && SITEPILOT_LLM_PROVIDER=openai \
 
 ## 环境变量（可选）
 
-默认零依赖即可运行（Mock LLM + SQLite）。要接真实 AI 网关：
+默认 Mock LLM 零外部 AI 依赖；数据库仅支持 PostgreSQL。要接真实 AI 网关：
 
 ```bash
 # backend/.env

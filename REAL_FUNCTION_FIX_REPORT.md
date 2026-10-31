@@ -35,7 +35,7 @@ docker/web/default.conf.template     (说明:资产 404 真实化——见"剩�
 
 ## Migration(增量,老数据兼容)
 
-- `inquiries` 补列:`product_model_snapshot / market_snapshot / source_market / source_locale / source_cta`(默认空串,ensure_columns 方言感知,老询盘不受影响)
+- `inquiries` 包含列:`product_model_snapshot / market_snapshot / source_market / source_locale / source_cta`(默认空串,老询盘不受影响)
 - 数据纠偏(幂等):mock SVG 的 `AI_GENERATED` → `FALLBACK`(启动日志实测"108 条")
 
 ## Tests

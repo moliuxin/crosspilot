@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { templateBySlug } from './templates-data'
+import { DEMO_SITES_ENABLED, templateBySlug } from './templates-data'
 import { renderLayout } from '../../components/site-blocks'
 import { api } from '../../services/api'
 import ThemePalette from '../../components/site/ThemePalette'
@@ -24,10 +24,11 @@ function loadPalette(slug) {
 /**
  * 模板 Demo 预览（公开路由 /templates/:slug，无需登录）。
  *
- * 有 demoSlug 的模板（全部 6 个）：直接渲染 **Skill 流水线真实生成的站点**
+ * demoSlug 且开启 VITE_DEMO_SITES_ENABLED：渲染 **Skill 流水线真实生成的站点**
  * （行业画像→主题→布局→Transcreation→cogview 视觉），支持三市场切换——
  * 三套布局/文案/图片由 SiteMarketVariant 独立持久化，不是翻译换色。
- * 无 demoSlug 的模板回落静态 DemoSection（内容标注 Demo）。
+ * 演示库未导入、接口 404 或开关关闭时：回落静态 DemoSection（内容标注 Demo），
+ * 保证模板预览无需登录、无需演示数据库也能正常打开。
  * 「使用模板」登录后创建网站；未登录先记录 intended_template。
  */
 export default function TemplatePreview() {
@@ -36,20 +37,28 @@ export default function TemplatePreview() {
   const [market, setMarket] = useState('en-US')
   const [data, setData] = useState(null)
   const [err, setErr] = useState('')
+  const [liveUnavailable, setLiveUnavailable] = useState(false)
   const [palette, setPalette] = useState(null)
   const [palOpen, setPalOpen] = useState(false)
 
+  const liveEnabled = Boolean(t?.demoSlug) && DEMO_SITES_ENABLED
+
   useEffect(() => {
-    if (!t?.demoSlug) return
+    setData(null)
+    setErr('')
+    setLiveUnavailable(false)
+    if (!liveEnabled) return
     setPalette(loadPalette(t.demoSlug))
-    setData(null); setErr('')
     api.getPublicSite(t.demoSlug, market)
       .then((d) => {
         if (!d?.market_variant) throw new Error('该市场版本尚未生成')
         setData(d)
       })
-      .catch((e) => setErr(e?.message || '加载失败'))
-  }, [t?.demoSlug, market])
+      .catch((e) => {
+        setLiveUnavailable(true)
+        setErr(e?.message || '加载失败')
+      })
+  }, [liveEnabled, t?.demoSlug, market])
 
   function updatePalette(next) {
     setPalette(next)
@@ -82,10 +91,16 @@ export default function TemplatePreview() {
   }
 
   const markets = (t.market_tags || []).filter((m) => MARKET_META[m])
+  const showLive = liveEnabled && !liveUnavailable
   const v = data?.market_variant
   const sections = v?.layout_schema?.sections || []
   const baseTokens = v?.design_tokens || {}
   const tokens = { ...baseTokens, ...(palette || {}) }  // 调色盘覆盖后的有效令牌
+  const demoSubtitle = showLive
+    ? 'Skill 流水线真实生成(非静态模板)'
+    : t.demoSlug && DEMO_SITES_ENABLED
+      ? '静态模板预览 · 演示站点暂不可用'
+      : 'Demo 预览'
 
   return (
     <div className="tpl-public-page">
@@ -95,12 +110,12 @@ export default function TemplatePreview() {
           <div>
             <strong>{t.name}</strong>
             <span>
-              {t.industry} · {t.demoSlug ? 'Skill 流水线真实生成(非静态模板)' : 'Demo 预览'}
+              {t.industry} · {demoSubtitle}
             </span>
           </div>
         </div>
         <div className="tpl-demo-actions">
-          {t.demoSlug && markets.length > 0 && (
+          {showLive && markets.length > 0 && (
             <div className="tpl-market-switch">
               {markets.map((m) => (
                 <button key={m} className={`tpl-mk-btn${m === market ? ' on' : ''}`}
@@ -115,7 +130,7 @@ export default function TemplatePreview() {
         </div>
       </header>
 
-      {t.demoSlug ? (
+      {showLive ? (
         <div className="tpl-live-stage">
           {err && <div className="empty">{err}。<Link to="/templates" className="ghost-btn">返回商城</Link></div>}
           {!err && !data && <div className="empty">加载 Skill 生成站点…</div>}

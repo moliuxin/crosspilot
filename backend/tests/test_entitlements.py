@@ -261,7 +261,13 @@ def test_plans_seeded(db_session):
     assert {"free", "starter", "growth", "expert"} <= ids
 
 
+def _add_tenant(db_session, tenant_id: int) -> None:
+    db_session.add(models.Tenant(id=tenant_id, name=f"测试租户 {tenant_id}", public_slug=f"t-{tenant_id}"))
+    db_session.flush()
+
+
 def test_wildcard_plan_has_every_feature(db_session):
+    _add_tenant(db_session, 99)
     entitlements.ensure_subscription(db_session, 99, plan_id="growth")
     db_session.commit()
     assert entitlements.has_feature(db_session, 99, "brush.edit") is True
@@ -269,6 +275,7 @@ def test_wildcard_plan_has_every_feature(db_session):
 
 
 def test_unknown_plan_falls_back_to_free(db_session):
+    _add_tenant(db_session, 98)
     entitlements.ensure_subscription(db_session, 98, plan_id="nonsense")
     db_session.commit()
     assert entitlements.get_plan_id(db_session, 98) == "nonsense"
@@ -279,6 +286,7 @@ def test_unknown_plan_falls_back_to_free(db_session):
 def test_expired_entitlement_is_ignored(db_session):
     from datetime import datetime, timedelta, timezone
 
+    _add_tenant(db_session, 97)
     db_session.add(
         models.Entitlement(
             id="ent_expired",
@@ -294,6 +302,7 @@ def test_expired_entitlement_is_ignored(db_session):
 
 
 def test_quota_limited_entitlement_blocks_when_exhausted(db_session):
+    _add_tenant(db_session, 96)
     db_session.add(
         models.Entitlement(
             id="ent_quota", tenant_id=96, feature_key="brush.edit", source="purchase", quota=1, used=1

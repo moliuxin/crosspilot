@@ -21,7 +21,7 @@ backend/app/routers/{skills,ai,brush,sites,site,public}.py
                                       Skill API;/ai/status;/brush/generate;
                                       market-variants 端点;market_variant 实体接入 Draft/Publish/Version/Rollback;
                                       公开站返回变体
-backend/app/skills/_migrate_helpers.py 方言感知列迁移(SQLite PRAGMA / PG information_schema)
+backend/app/bootstrap.py PostgreSQL 建表 + 种子 + 关联修复
 src/components/site-blocks/           Schema 渲染器 + 真实 <img>(lazy/alt/onError)
 src/pages/PublicMarketSite.jsx        /#/site/:slug/:market/ 公开页(独立 SEO Title/hreflang)
 src/pages/Sites/MarketVariantsPanel.jsx  三市场并排 + AI 画笔(选中→指令→Diff→确认→回滚)

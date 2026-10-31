@@ -11,9 +11,12 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from sqlalchemy import text
 
+from .bootstrap import initialize_database
 from .config import get_settings
-from .database import Base, SessionLocal, engine
+from .database import SessionLocal
 
 # Website Intelligence 模型(确保 create_all 建表)
 from .website_intelligence import models as _wi_models  # noqa: F401
@@ -40,7 +43,6 @@ from .routers import (
     tasks,
     wordstat,
 )
-from .seed import seed_if_empty, sync_pg_sequences
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 logger = logging.getLogger("sitepilot")
@@ -50,247 +52,10 @@ settings = get_settings()
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
-    # 建表 + 首次写入种子数据
-    Base.metadata.create_all(bind=engine)
-    _migrate_sqlite(db=SessionLocal())
-    db = SessionLocal()
-    try:
-        if seed_if_empty(db):
-            logger.info("已写入种子数据")
-        else:
-            logger.info("数据库已有数据，跳过种子写入")
-        # PG：把自增序列推进到 MAX(id)（种子显式主键不推进序列，注册会撞主键）
-        sync_pg_sequences(db)
-        # PHASE 8：assets 表新增列（存量库补列；新库 create_all 已带）
-        from .skills._migrate_helpers import ensure_columns
-
-        ensure_columns(db, "assets", {
-            "product_id": "VARCHAR(64)",
-            "caption": "VARCHAR(255) DEFAULT ''",
-            "alt_text": "VARCHAR(255) DEFAULT ''",
-            "sort_order": "INTEGER DEFAULT 0",
-            "is_primary": "BOOLEAN DEFAULT FALSE",
-        })
-        ensure_columns(db, "site_market_variants", {
-            "seo_metadata": "JSON DEFAULT '{}'::json",
-        })
-        ensure_columns(db, "skill_runs", {
-            "user_id": "VARCHAR(64) DEFAULT ''",
-            "finished_at": "TIMESTAMP WITH TIME ZONE",
-        })
-        ensure_columns(db, "drafts", {
-            "selection": "JSON DEFAULT '{}'::json",
-        })
-        # RFQ 快照 + 线索来源追踪(jhworld J2/J3,增量列;老询盘保持空值兼容)
-        ensure_columns(db, "inquiries", {
-            "product_model_snapshot": "VARCHAR(128) DEFAULT ''",
-            "market_snapshot": "VARCHAR(16) DEFAULT ''",
-            "source_market": "VARCHAR(16) DEFAULT ''",
-            "source_locale": "VARCHAR(16) DEFAULT ''",
-            "source_cta": "VARCHAR(128) DEFAULT ''",
-            "budget_range": "VARCHAR(120) DEFAULT ''",
-        })
-        # 数据纠偏(幂等):mock SVG data-URL 曾被误标 AI_GENERATED → 一律 FALLBACK。
-        # 只动 assets 表溯源;变体 manifest/props 引用同名槽位,由 regenerate 重刷覆盖。
-        _fix_mock_asset_labels(db)
-    finally:
-        db.close()
+    if settings.auto_init:
+        # 本地单进程开发：启动时自动建表/播种；Compose 使用独立 init 服务并关闭此开关。
+        initialize_database()
     yield
-
-
-def _fix_mock_asset_labels(db) -> None:
-    """存量纠偏:data:image/svg 占位图不得标 AI_GENERATED(诚实性)。幂等。"""
-    from sqlalchemy import text
-
-    try:
-        r = db.execute(text(
-            "UPDATE assets SET source_type = 'FALLBACK' "
-            "WHERE source_type = 'AI_GENERATED' AND url LIKE 'data:image/svg%'"
-        ))
-        if r.rowcount:
-            logger.info("数据纠偏:%d 条 mock SVG 资产 AI_GENERATED → FALLBACK", r.rowcount)
-        db.commit()
-    except Exception as exc:  # noqa: BLE001 — 迁移失败不阻断启动
-        db.rollback()
-        logger.warning("mock 资产标注纠偏失败(可忽略):%s", str(exc)[:120])
-
-
-def _migrate_sqlite(db) -> None:
-    """SQLite 的 create_all 不会给已有表补新列 —— 这里做最小迁移。
-
-    迁移点：
-      1) drafts.patch（P0-2 结构化写回补丁）
-      2) 各业务表 tenant_id（多租户隔离）—— 存量数据归入默认租户，老数据不丢
-    生产换 Postgres 后应改用 Alembic。
-    """
-    from sqlalchemy import text
-
-    # 带 tenant_id 的业务表；单例表（site_state/usage/credits）主键即 tenant_id，无需加列
-    tenant_tables = [
-        "products",
-        "inquiries",
-        "pages",
-        "tasks",
-        "drafts",
-        "versions",
-        "credit_logs",
-    ]
-    try:
-        cols = {row[1] for row in db.execute(text("PRAGMA table_info(drafts)"))}
-        if cols and "patch" not in cols:
-            db.execute(text("ALTER TABLE drafts ADD COLUMN patch JSON DEFAULT '{}'"))
-            db.commit()
-            logger.info("已迁移：drafts 增加 patch 列")
-    except Exception as exc:  # pragma: no cover
-        db.rollback()
-        logger.warning("SQLite 迁移（patch）失败：%s", exc)
-
-    for tbl in tenant_tables:
-        try:
-            rows = list(db.execute(text(f"PRAGMA table_info({tbl})")))
-            if not rows:  # 表还不存在（全新库会由 create_all 建好）
-                continue
-            existing = {r[1] for r in rows}
-            if "tenant_id" not in existing:
-                db.execute(text(f"ALTER TABLE {tbl} ADD COLUMN tenant_id INTEGER DEFAULT 1"))
-                db.commit()
-                logger.info("已迁移：%s 增加 tenant_id 列", tbl)
-        except Exception as exc:  # pragma: no cover
-            db.rollback()
-            logger.warning("SQLite 迁移（%s.tenant_id）失败：%s", tbl, exc)
-
-    # 存量单租户数据归入默认租户，并确保默认租户存在
-    try:
-        from . import models
-
-        if not db.get(models.Tenant, models.DEFAULT_TENANT_ID):
-            db.add(models.Tenant(id=models.DEFAULT_TENANT_ID, name="AQUAFLOW Industrial", industry="工业水处理设备", plan="free"))
-            db.commit()
-            logger.info("已创建默认租户（存量数据归属）")
-        for tbl in tenant_tables:
-            rows = list(db.execute(text(f"PRAGMA table_info({tbl})")))
-            if rows and "tenant_id" in {r[1] for r in rows}:
-                db.execute(text(f"UPDATE {tbl} SET tenant_id = 1 WHERE tenant_id IS NULL"))
-        db.commit()
-    except Exception as exc:  # pragma: no cover
-        db.rollback()
-        logger.warning("默认租户初始化失败：%s", exc)
-
-    # tenants.public_slug（独立站前台对外标识）
-    try:
-        rows = list(db.execute(text("PRAGMA table_info(tenants)")))
-        if rows and "public_slug" not in {r[1] for r in rows}:
-            db.execute(text("ALTER TABLE tenants ADD COLUMN public_slug VARCHAR(64) DEFAULT ''"))
-            db.commit()
-            logger.info("已迁移：tenants 增加 public_slug 列")
-    except Exception as exc:  # pragma: no cover
-        db.rollback()
-        logger.warning("SQLite 迁移（tenants.public_slug）失败：%s", exc)
-
-    # 套餐字典 + 存量租户订阅回填（权限真源）
-    try:
-        from . import entitlements, models
-
-        entitlements.seed_plans(db)
-        tenants = db.query(models.Tenant).all()
-        changed = False
-        for t in tenants:
-            if not t.public_slug:
-                t.public_slug = f"t-{t.id}-{__import__('secrets').token_hex(3)}"
-                changed = True
-            if db.get(models.Subscription, t.id) is None:
-                db.add(
-                    models.Subscription(
-                        id=t.id, tenant_id=t.id, plan_id=t.plan or "free", status="active"
-                    )
-                )
-                changed = True
-        if changed:
-            db.commit()
-        logger.info("已回填 public_slug / Subscription")
-    except Exception as exc:  # pragma: no cover
-        db.rollback()
-        logger.warning("套餐字典 / 订阅回填失败：%s", exc)
-
-    # 多站点迁移：site_id 列 + 每租户默认站点 + 存量数据回填（P0-MULTI-SITE）
-    _migrate_multi_site(db)
-    db.close()
-
-
-def _migrate_multi_site(db) -> None:
-    """1 tenant = 1 website → 1 tenant : N sites 的增量迁移。
-
-    规则（AGENTS.md / P0-MULTI-SITE 指令）：
-    - pages / inquiries / versions / drafts 增加 site_id 列；
-    - 每个存量租户自动创建 Default Site（名称取自 SiteState.company_name）；
-    - 旧 Page / Inquiry / Version / Draft 记录全部关联到 Default Site；
-    - 租户产品通过 site_products 关联到 Default Site（不复制产品事实）；
-    - 禁止让旧数据丢失。
-    """
-    from sqlalchemy import text
-
-    from . import models
-    from .tenancy import create_default_site
-
-    site_tables = ["pages", "inquiries", "versions", "drafts"]
-    for tbl in site_tables:
-        try:
-            rows = list(db.execute(text(f"PRAGMA table_info({tbl})")))
-            if not rows:
-                continue
-            if "site_id" not in {r[1] for r in rows}:
-                db.execute(text(f"ALTER TABLE {tbl} ADD COLUMN site_id VARCHAR(64) DEFAULT ''"))
-                db.commit()
-                logger.info("已迁移：%s 增加 site_id 列", tbl)
-        except Exception as exc:  # pragma: no cover
-            db.rollback()
-            logger.warning("SQLite 迁移（%s.site_id）失败：%s", tbl, exc)
-
-    try:
-        tenants = db.query(models.Tenant).all()
-        for tenant in tenants:
-            # 该租户已有站点 → 只补 site_id 空值，不重复建默认站点
-            sites = (
-                db.query(models.Site)
-                .filter(models.Site.tenant_id == tenant.id)
-                .order_by(models.Site.created_at.asc())
-                .all()
-            )
-            if not sites:
-                # ORM 层建默认站点（与运行时 default_site() 同一入口，字段一致）
-                site = create_default_site(db, tenant.id)
-                sites = [site]
-                logger.info("已为租户 %s 创建默认站点 %s", tenant.id, site.name)
-            fallback = sites[0].id
-
-            for tbl in site_tables:
-                db.execute(
-                    text(f"UPDATE {tbl} SET site_id = :sid WHERE tenant_id = :tid AND (site_id IS NULL OR site_id = '')"),
-                    {"sid": fallback, "tid": tenant.id},
-                )
-
-            # 产品关联：租户级产品 → 默认站点（复用事实，不复制）
-            product_ids = [
-                pid
-                for (pid,) in db.query(models.Product.id).filter(models.Product.tenant_id == tenant.id).all()
-            ]
-            existing = {
-                (sp.site_id, sp.product_id)
-                for sp in db.query(models.SiteProduct)
-                .filter(models.SiteProduct.site_id == fallback)
-                .all()
-            }
-            added = False
-            for pid in product_ids:
-                if (fallback, pid) not in existing:
-                    db.add(models.SiteProduct(site_id=fallback, product_id=pid))
-                    added = True
-            db.commit()
-            if added:
-                logger.info("已为租户 %s 回填站点-产品关联", tenant.id)
-    except Exception as exc:  # pragma: no cover
-        db.rollback()
-        logger.warning("多站点迁移失败：%s", exc)
 
 
 app = FastAPI(
@@ -354,8 +119,16 @@ def root():
 
 @app.get("/healthz", include_in_schema=False)
 def healthz():
-    """容器编排健康探针：与部署前缀无关的固定路径（compose healthcheck 用）。"""
-    return {"ok": True}
+    """容器编排健康探针：与部署前缀无关，且真实检查 PostgreSQL 连通性。"""
+    db = SessionLocal()
+    try:
+        db.execute(text("SELECT 1"))
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("健康检查失败（数据库不可用）：%s", str(exc)[:160])
+        return JSONResponse(status_code=503, content={"ok": False, "database": "unavailable"})
+    finally:
+        db.close()
+    return {"ok": True, "database": "ok"}
 
 
 if settings.app_base != "/":

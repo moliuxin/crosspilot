@@ -171,6 +171,6 @@ POST /api/site/generate               首次 AI 建站同时落站点实体
 
 ## 6. 本机验证环境
 
-- 后端 `uvicorn :8000`（SQLite，启动时自动完成多站点迁移）；前端 `vite :5173`
-- Node v22.14.0（便携）、Python 3.14、pytest 246/246
+- 后端 `uvicorn :8000`（PostgreSQL，`python -m app.bootstrap` 完成建表/种子/站点关联）；前端 `vite :5173`
+- Node v22、Python 3.11（Docker）、pytest 356 passed / 1 skipped（PostgreSQL）
 - 演示账号：`demo@aquaflow-demo.com / demo-pass-123`（默认租户含种子数据与 Default Site）
